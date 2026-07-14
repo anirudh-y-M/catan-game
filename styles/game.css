@@ -25,28 +25,32 @@
 @keyframes pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
 
 /* ---------- Game layout ---------- */
-.game { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; }
-.topbar {
-  display: flex; align-items: center; gap: 1rem;
-  padding: .6rem 1rem; background: var(--panel); border-bottom: 1px solid var(--panel-border);
-  box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 5;
-}
-.topbar h1 { font-size: 1.3rem; color: var(--text); }
-.topbar .spacer { flex: 1; }
-.topbar .meta { color: var(--text-dim); font-size: .85rem; }
-.theme-toggle .seg button { padding: .3rem .6rem; font-size: .8rem; }
-
-.game__body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 0; }
+/* The board owns the full screen height and is FIXED (never scrolls). The menu that used
+   to sit above the board now lives at the top of the sidebar, so nothing steals the
+   board's vertical space. Only the sidebar scrolls. */
+.game { height: 100vh; overflow: hidden; }
+.game__body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100vh; min-height: 0; }
 .board-wrap {
-  display: flex; align-items: center; justify-content: center; min-width: 0; padding: 14px;
+  display: flex; align-items: center; justify-content: center; min-width: 0; height: 100vh; padding: 12px;
   background: radial-gradient(circle at 50% 40%, var(--bg-2), var(--bg));
+  overflow: hidden;
 }
-.board-wrap svg { width: 100%; height: 100%; max-height: calc(100vh - 76px); display: block; }
+.board-wrap svg { width: 100%; height: 100%; max-height: calc(100vh - 20px); display: block; }
 
 .sidebar {
   background: var(--bg-2); border-left: 1px solid var(--panel-border);
-  display: flex; flex-direction: column; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; min-height: 0; height: 100vh; overflow-y: auto;
 }
+/* Menu, now the sidebar's sticky header */
+.topbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;
+  padding: .55rem .8rem; background: var(--panel); border-bottom: 1px solid var(--panel-border);
+  position: sticky; top: 0; z-index: 6;
+}
+.topbar h1 { font-size: 1.2rem; color: var(--text); }
+.topbar .spacer { flex: 1; }
+.topbar .meta { color: var(--text-dim); font-size: .8rem; flex-basis: 100%; }
+.theme-toggle .seg button { padding: .3rem .6rem; font-size: .8rem; }
 .sidebar__section { padding: .7rem .8rem; border-bottom: 1px solid var(--panel-border); }
 .sidebar__scroll { overflow-y: auto; min-height: 0; }
 
@@ -212,16 +216,16 @@
   html, body { height: auto; }
   body { overflow-x: hidden; }
   .game { height: auto; min-height: 100vh; overflow-x: hidden; }
-  .game__body { grid-template-columns: minmax(0, 1fr); }
+  .game__body { grid-template-columns: minmax(0, 1fr); height: auto; }
   .board-wrap, .sidebar { min-width: 0; }
-  .board-wrap { padding: 8px; }
-  .board-wrap svg { max-height: 68vh; }
+  .board-wrap { padding: 8px; height: auto; }
+  .board-wrap svg { max-height: 62vh; }
   .sidebar {
     border-left: none; border-top: 1px solid var(--panel-border);
-    overflow: visible; max-height: none;
+    overflow: visible; max-height: none; height: auto;
   }
-  .topbar { flex-wrap: wrap; gap: .5rem .8rem; }
-  .topbar .meta { flex-basis: 100%; order: 3; }
+  .topbar { position: static; }
+  .topbar .meta { order: 3; }
 }
 
 /* Narrow + LANDSCAPE (phones turned sideways): board and sidebar side by side (fits more
@@ -231,14 +235,14 @@
   html, body { height: auto; }
   body { overflow-x: hidden; }
   .game { height: auto; min-height: 100vh; }
-  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 42%, 340px); align-items: start; }
+  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 42%, 340px); align-items: start; height: auto; }
   .board-wrap, .sidebar { min-width: 0; }
   .board-wrap {
     position: sticky; top: 0; align-self: start; padding: 6px;
     height: 100vh; display: flex; align-items: center; justify-content: center;
   }
   .board-wrap svg { max-height: calc(100vh - 12px); }
-  .sidebar { border-left: 1px solid var(--panel-border); border-top: none; overflow: visible; max-height: none; }
+  .sidebar { border-left: 1px solid var(--panel-border); border-top: none; overflow: visible; max-height: none; height: auto; }
   .topbar { flex-wrap: nowrap; padding: .35rem .7rem; }
   .topbar h1 { font-size: 1.05rem; }
   .topbar .meta { display: none; } /* saves vertical space; turn info is in the sidebar */

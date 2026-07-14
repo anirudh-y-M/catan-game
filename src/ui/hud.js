@@ -237,6 +237,7 @@ export function buildSidebar(state, ctx) {
     text: ctx.timerPaused ? '⏱ paused' : `⏱ ${ctx.timeLeft}s`,
   }) : null;
   const sidebar = h('aside', { class: 'sidebar' }, [
+    buildTopbar(state, ctx),
     h('div', { class: 'banner', 'aria-live': 'polite' }, [
       h('div', { class: 'banner__row' }, [
         h('div', { class: 'turn', text: `${state.players[state.current]?.name ?? ''}'s turn` }),

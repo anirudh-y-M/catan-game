@@ -8,7 +8,7 @@ import {
   legalSettlementVertices, legalCityVertices, legalRoadEdges,
 } from './engine/index.js';
 import { renderBoard } from './ui/render.js';
-import { buildTopbar, buildSidebar } from './ui/hud.js';
+import { buildSidebar } from './ui/hud.js';
 import {
   discardModal, stealModal, tradeModal, offerResolveModal,
   resourcePickerModal, playDevModal, winModal,
@@ -330,7 +330,6 @@ function render() {
     }
   });
   app.appendChild(h('div', { class: 'game' }, [
-    buildTopbar(state, ctx),
     h('div', { class: 'game__body' }, [board, buildSidebar(state, ctx)]),
   ]));
   const p = pickFor();
