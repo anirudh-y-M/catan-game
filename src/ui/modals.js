@@ -185,10 +185,22 @@ export function winModal(state, { onNewGame }) {
   const standings = state.players
     .map((p) => ({ name: p.name, pts: scoreFor(state, p.id) }))
     .sort((a, b) => b.pts - a.pts);
-  return h('div', { class: 'modal' }, [
-    h('div', { class: 'confetti', text: '🎉🏆🎉' }),
+  const colors = ['#d64550', '#2d7dd2', '#f4a020', '#8c4fbf', '#35b06a', '#ffcf3f'];
+  const confetti = h('div', { class: 'confetti-layer' }, Array.from({ length: 44 }, () => h('span', {
+    class: 'confetti-piece',
+    style: {
+      left: `${Math.random() * 100}%`,
+      background: colors[Math.floor(Math.random() * colors.length)],
+      animationDuration: `${2.2 + Math.random() * 1.8}s`,
+      animationDelay: `${Math.random() * 0.7}s`,
+      transform: `rotate(${Math.random() * 360}deg)`,
+    },
+  })));
+  return h('div', { class: 'modal win' }, [
+    confetti,
+    h('div', { class: 'confetti', text: '🏆' }),
     h('h2', { text: `${state.players[state.winner].name} wins!` }),
-    h('ul', { class: 'standings' }, standings.map((s) => h('li', {}, [h('span', { text: s.name }), h('span', { text: `${s.pts} ★` })]))),
+    h('ul', { class: 'standings' }, standings.map((s, i) => h('li', {}, [h('span', { text: `${i === 0 ? '🥇 ' : ''}${s.name}` }), h('span', { text: `${s.pts} ★` })]))),
     actions([h('button', { class: 'btn btn-primary', text: 'New Game', on: { click: onNewGame } })]),
   ]);
 }

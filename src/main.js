@@ -32,6 +32,50 @@ let hostState = null; // host lobby state
 let joinState = null; // joiner lobby state
 let uiTheme = (() => { try { return localStorage.getItem('catan-theme') || 'classic'; } catch { return 'classic'; } })();
 const freshUi = () => ({ mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true });
+let anim = {}; // one-shot animation hints for the next render (piece pop, robber hop, …)
+
+const RES_EMOJI = { brick: '🧱', lumber: '🌲', wool: '🐑', grain: '🌾', ore: '⛰️' };
+
+// Diff two states to decide which one-shot board animations to play.
+function diffAnim(prev, next) {
+  const a = { recentVertex: null, recentEdge: null, movedRobber: false, producing: [] };
+  if (!prev) return a;
+  for (const v of next.board.vertices) {
+    const was = prev.board.vertices[v.id].building;
+    if (v.building && (!was || was.type !== v.building.type)) a.recentVertex = v.id;
+  }
+  for (const e of next.board.edges) {
+    if (e.road !== null && prev.board.edges[e.id].road === null) a.recentEdge = e.id;
+  }
+  a.movedRobber = prev.board.robberHex !== next.board.robberHex;
+  if (next.lastRoll != null && next.lastRoll !== 7 && prev.lastRoll !== next.lastRoll) {
+    a.producing = next.board.hexes.filter((hx) => hx.token === next.lastRoll && hx.id !== next.board.robberHex).map((hx) => hx.id);
+  }
+  return a;
+}
+// Positive per-player resource gains on a production roll (for floating popups).
+function diffGains(prev, next) {
+  if (!prev || next.lastRoll == null || next.lastRoll === 7 || prev.lastRoll === next.lastRoll) return null;
+  const out = {};
+  next.players.forEach((p, id) => {
+    const parts = [];
+    for (const r of Object.keys(p.resources)) {
+      const d = p.resources[r] - prev.players[id].resources[r];
+      if (d > 0) parts.push(`+${d}${RES_EMOJI[r]}`);
+    }
+    if (parts.length) out[id] = parts.join(' ');
+  });
+  return Object.keys(out).length ? out : null;
+}
+function flashGains(gains) {
+  for (const [pid, text] of Object.entries(gains)) {
+    const card = app.querySelector(`.pcard[data-player="${pid}"]`);
+    if (!card) continue;
+    const pop = h('div', { class: 'gain-pop', text });
+    card.appendChild(pop);
+    setTimeout(() => pop.remove(), 1600);
+  }
+}
 
 // ---------- Turn/authority helpers ----------
 const activeSeat = () => (state.phase === 'setup' ? state.setup.order[state.setup.pointer] : state.current);
@@ -60,13 +104,19 @@ function dispatch(action) {
 }
 
 function applyAndRender(action) {
-  try { state = applyAction(state, action); } catch (e) { console.warn('rejected', action.type, e.message); return; }
+  const prev = state;
+  let next;
+  try { next = applyAction(state, action); } catch (e) { console.warn('rejected', action.type, e.message); return; }
+  anim = diffAnim(prev, next);
+  const gains = diffGains(prev, next);
+  state = next;
   if (!online) save(state);
   if (action.type === 'buildRoad') ui.mode = state.freeRoads > 0 ? 'buildRoad' : 'idle';
   else if (action.type === 'buildSettlement' || action.type === 'buildCity') ui.mode = 'idle';
   playFor(action);
   if (online && online.role === 'host') online.host.broadcast({ t: 'state', state });
   render();
+  if (gains) flashGains(gains);
 }
 
 // Host: apply an authorized action that arrived from a remote seat.
@@ -177,7 +227,12 @@ function render() {
     h('div', { class: 'game__body' }, [board, buildSidebar(state, ctx)]),
   ]));
   const p = pickFor();
-  renderBoard(svg, state, { pick: { vertices: p.vertices, edges: p.edges, hexes: p.hexes }, onVertex: p.onVertex, onEdge: p.onEdge, onHex: p.onHex });
+  renderBoard(svg, state, {
+    pick: { vertices: p.vertices, edges: p.edges, hexes: p.hexes },
+    onVertex: p.onVertex, onEdge: p.onEdge, onHex: p.onHex,
+    recentVertex: anim.recentVertex, recentEdge: anim.recentEdge, movedRobber: anim.movedRobber, producing: anim.producing,
+  });
+  anim = {}; // one-shot — don't replay on subsequent renders (mode toggles, hover, …)
   syncModals();
 }
 
@@ -258,11 +313,15 @@ function clientOnMessage(msg) {
   if (msg.t === 'welcome') { joinState.seat = msg.seat; if (online) online.seat = msg.seat; }
   else if (msg.t === 'state') {
     const prev = state;
-    state = msg.state;
+    const next = msg.state;
     if (!online) { online = { role: 'client', seat: joinState.seat ?? 0, client: joinState.client }; ui = freshUi(); }
-    if (prev && state.lastRoll !== prev.lastRoll && state.lastRoll != null) play('dice');
-    if (prev && state.winner != null && prev.winner == null) play('win');
+    anim = diffAnim(prev, next);
+    const gains = diffGains(prev, next);
+    state = next;
+    if (prev && next.lastRoll !== prev.lastRoll && next.lastRoll != null) play('dice');
+    if (prev && next.winner != null && prev.winner == null) play('win');
     render();
+    if (gains) flashGains(gains);
   }
 }
 async function joinGenerateAnswer(offerText) {
@@ -306,13 +365,26 @@ function lookCard(includeHide) {
     ]) : null,
   ]);
 }
+function getSigPref() { try { return localStorage.getItem('catan-sig') || ''; } catch { return ''; } }
+function setSigPref(v) { try { if (v) localStorage.setItem('catan-sig', v); else localStorage.removeItem('catan-sig'); } catch { /* ignore */ } }
+
 function modeCard() {
   return h('div', { class: 'card' }, [
     h('h2', { text: 'Play mode' }),
     seg([['local', '📱 Local (pass & play)'], ['host', '🌐 Host online'], ['join', '🔗 Join online']], cfg.mode, (v) => { cfg.mode = v; renderSetup(); }),
-    cfg.mode !== 'local' ? h('p', { class: 'hint', text: signalingEnabled()
-      ? 'Online with short room codes (a signaling service is configured).'
-      : 'Online is peer-to-peer over the same Wi-Fi — no server. Exchange a connect code with each player.' }) : null,
+    cfg.mode !== 'local' ? h('div', {}, [
+      h('p', { class: 'hint', text: signalingEnabled()
+        ? '✅ Short room codes are ON (a signaling service is configured below).'
+        : 'Without a signaling service you exchange a long connect code (works same-Wi-Fi, no server). For a short 9-letter code, add a signaling URL below.' }),
+      h('div', { class: 'field', style: { marginTop: '.5rem' } }, [
+        h('label', { text: 'Signaling URL — enables short room codes (advanced, optional)' }),
+        h('input', {
+          type: 'text', value: getSigPref(), placeholder: 'https://your-project-default-rtdb.firebaseio.com',
+          on: { change: (e) => { setSigPref(e.target.value.trim()); renderSetup(); } },
+        }),
+        h('p', { class: 'hint', text: 'A signaling service is a third-party dependency and may require your org’s External Service Review. See the README to self-host a relay with no third party.' }),
+      ]),
+    ]) : null,
   ]);
 }
 function nameCard() {
@@ -498,7 +570,19 @@ function demoBoot(params) {
   };
 }
 
+function handleKey(e) {
+  if (!state || state.phase === 'setup' || state.phase === 'gameOver') return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (online && !myTurn()) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r' && state.phase === 'roll') { e.preventDefault(); dispatch({ type: 'rollDice' }); }
+  else if (k === 'e' && state.phase === 'main') { e.preventDefault(); dispatch({ type: 'endTurn' }); }
+  else if (e.key === 'Escape' && ui.mode !== 'idle') { ui.mode = 'idle'; render(); }
+}
+
 function boot() {
+  window.addEventListener('keydown', handleKey);
   const params = new URLSearchParams(location.search);
   if (params.has('demo')) { demoBoot(params); return; }
   renderSetup();

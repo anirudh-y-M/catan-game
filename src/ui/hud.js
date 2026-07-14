@@ -91,27 +91,38 @@ function playerCard(state, player, ctx) {
     state.awards.largestArmy === player.id ? h('span', { class: 'badge', title: 'Largest Army', text: '🛡️ LA' }) : null,
   ]);
 
+  const vp = displayVP(state, player.id, viewer);
+  const target = state.config.targetVP || 10;
   return h('div', {
-    class: `pcard${isCurrent ? ' active' : ''}`,
+    class: `pcard${isCurrent ? ' active' : ''}`, dataset: { player: String(player.id) },
     style: { borderLeftColor: colorHex(player.color) },
   }, [
     h('div', { class: 'pcard__top' }, [
+      h('span', { class: 'pcard__avatar', style: { background: colorHex(player.color) }, text: (player.name[0] || '?').toUpperCase() }),
       h('span', { class: 'pcard__name', text: player.name + (ctx.online && player.id === ctx.localSeat ? ' (you)' : '') }),
       badges,
-      h('span', { class: 'pcard__vp', title: 'Victory points', text: `${displayVP(state, player.id, viewer)} ★` }),
+      h('span', { class: 'pcard__vp', title: `${vp} / ${target} victory points`, text: `${vp} ★` }),
     ]),
+    h('div', { class: 'vp-bar' }, [h('span', { style: { width: `${Math.min(100, (vp / target) * 100)}%` } })]),
     res,
     h('div', { class: 'pcard__hidden', text: `🎴 ${devSummary}` }),
     h('div', { class: 'pcard__hidden', text: `🏠 ${player.pieces.settlements} · 🏛️ ${player.pieces.cities} · 🛤️ ${player.pieces.roads}` }),
   ]);
 }
 
+// Which of the 9 grid cells hold a pip, per die value.
+const PIP_MAP = {
+  1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
+};
+function die(v, rolling) {
+  const cells = Array.from({ length: 9 }, (_, i) => h('span', v != null && PIP_MAP[v].includes(i) ? { class: 'dp' } : {}));
+  return h('div', { class: `die${rolling ? ' rolling' : ''}`, 'aria-label': v != null ? `die showing ${v}` : 'die' }, cells);
+}
 function diceSection(state, ctx) {
   const [d1, d2] = state.dice || [null, null];
-  const face = (v) => h('div', { class: `die${ctx.ui.rolling ? ' rolling' : ''}`, text: v == null ? '·' : String(v) });
   return h('div', { class: 'sidebar__section' }, [
     h('div', { class: 'dice' }, [
-      face(d1), face(d2),
+      die(d1, ctx.ui.rolling), die(d2, ctx.ui.rolling),
       state.dice ? h('span', { class: 'dice__sum', text: `= ${state.lastRoll}` }) : null,
     ]),
   ]);

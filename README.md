@@ -90,24 +90,34 @@ configurable and **off by default**:
 - Both are external services and, per Mercari policy, may require the internal
   **External Service Review** before use — hence empty by default.
 
-### Optional: short room codes (`ABC-DEF-GHI`)
+### Short room codes (`ABC-DEF-GHI`)
 
-Instead of the copy/paste handshake, the host can share a **9-letter room code** and
-joiners just type it — no code exchange. This needs a tiny signalling relay to pass the
-connection info under the code, so it is **off by default** and, because it introduces a
-third-party service, **requires the internal External Service Review before use**.
+The long connect code above is the WebRTC connection info itself — with no server there is
+**nowhere to store it**, so it can't be shortened. A **9-letter room code only works if a
+signalling relay holds that info under the code.** So short codes are **off by default**;
+turn them on by pointing the app at a relay via the **"Signaling URL"** field on the setup
+screen (or `SIGNALING_URL` in `src/ui/signaling.js`, `?sig=<url>`, or
+`localStorage['catan-sig']`). Then *Host online* shows a code and *Join online* asks for
+one. Two ways to provide the relay:
 
-To enable it:
-1. Create a **Firebase Realtime Database** (free tier) and note its URL, e.g.
-   `https://your-project-default-rtdb.firebaseio.com`. Set its rules so `/rooms` is
-   read/write (open, or with a short TTL — it only holds transient offer/answer blobs).
-2. Put that URL in `SIGNALING_URL` in `src/ui/signaling.js` (or, for a quick test, append
-   `?sig=<url>` to the page URL, or set `localStorage['catan-sig']`).
-3. Complete your org's External Service Review for Firebase before real use.
+**A) Self-host — no third party (included).** Run the bundled relay on any machine both
+players can reach:
 
-With a URL configured, *Host online* shows a room code and *Join online* asks for one;
-with nothing configured, the app falls back to the serverless copy/paste flow above. Any
-REST key-value store exposing Firebase-style `${base}/${path}.json` GET/PUT works.
+```bash
+node signaling-server.js        # prints  ?sig=http://<your-ip>:8787
+```
+
+Then open the game with that `?sig=` (or paste it into the Signaling URL field). It's your
+own server, so no third-party review is needed. **Caveat:** browsers block an HTTPS page
+from calling an HTTP server (mixed content), so if the game is on GitHub Pages (HTTPS)
+either serve the relay over HTTPS **or** serve the game over HTTP on the same LAN
+(`python3 -m http.server`) and use HTTP for both.
+
+**B) Firebase Realtime Database — works from HTTPS/GitHub Pages, across networks.** Create
+a free RTDB, allow read/write on `/rooms`, and use its `https://…firebaseio.com` URL. It's
+a third-party service, so per Mercari policy it **may require the internal External Service
+Review before use.** (Any REST store exposing Firebase-style `${base}/${path}.json`
+GET/PUT works.)
 
 ## Run the tests
 
