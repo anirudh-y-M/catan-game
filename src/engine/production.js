@@ -66,8 +66,9 @@ registerHandlers({
 
     if (sum === 7) {
       state.robberReturnPhase = 'main'; // roller resumes their turn after the robber
+      const limit = state.config.discardLimit ?? ROBBER_HAND_LIMIT;
       state.pendingDiscards = state.players
-        .filter((p) => handSize(p) > ROBBER_HAND_LIMIT)
+        .filter((p) => handSize(p) > limit)
         .map((p) => p.id);
       state.phase = state.pendingDiscards.length ? 'discard' : 'moveRobber';
       logMsg(state, 'Rolled a 7 — the robber stirs!');

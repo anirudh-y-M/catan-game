@@ -9,10 +9,14 @@ No build step, no server — just static files, so it hosts on **GitHub Pages** 
 - **Full base ruleset** — settlements, cities, roads, the robber, resource & development
   cards, maritime + player trading, ports, Longest Road, Largest Army, and the 10-VP win,
   faithful to the official 2020/2015 rulebook.
-- **Two rule variants** — *Standard* (10 VP) and *Quick Play* (8 VP + a small starting
-  boost for shorter games).
+- **Three rule variants** — *Standard* (10 VP), *Quick Play* (8 VP + a small starting
+  boost), and *The Works* (8 VP · **3** starting settlements each · +3 bonus resources · a
+  free development card · discard only above 9 cards) for a fast, action-packed game.
 - **Two visual themes** — *Classic* (warm parchment & wood) and *Modern* (flat, dark
   slate). Switch live from the top bar.
+- **Synthesized sound effects** — dice, building, dev cards, the robber, trades, and a
+  victory fanfare, all generated in-browser (no files, works offline), with a **mute
+  toggle** in the top bar (preference persists).
 - **Random balanced board** (no adjacent red 6/8) or a fixed **Beginner** layout.
 - **Smooth hot-seat UX** — open resources, hidden dev cards (so Largest-Army bluffs and
   surprise VP wins survive), optional "hide hands between turns", only *legal* moves

@@ -7,7 +7,7 @@ import { cloneState, rngFrom, commitRng, logMsg } from './state.js';
 import {
   canPlaceSetupSettlement, legalSetupRoadEdges,
 } from './rules.js';
-import { QUICK_PLAY_BONUS_RESOURCES, RESOURCES } from './constants.js';
+import { RESOURCES } from './constants.js';
 
 const HANDLERS = {};
 
@@ -59,15 +59,18 @@ function finishSetup(state) {
   state.phase = 'roll';
   state.turn = 1;
   state.current = state.setup.order[state.setup.order.length - 1];
-  if (state.config.variant === 'quick') {
+
+  const { bonusResources, freeDevCards } = state.config;
+  if (bonusResources > 0 || freeDevCards > 0) {
     const rng = rngFrom(state);
     for (const p of state.players) {
-      for (let i = 0; i < QUICK_PLAY_BONUS_RESOURCES; i++) {
-        giveResource(state, p.id, rng.pick(RESOURCES), 1);
+      for (let i = 0; i < bonusResources; i++) giveResource(state, p.id, rng.pick(RESOURCES), 1);
+      for (let i = 0; i < freeDevCards; i++) {
+        if (state.devDeck.length) p.dev.push({ type: state.devDeck.pop(), boughtTurn: 0, played: false });
       }
     }
     commitRng(state, rng);
-    logMsg(state, 'Quick Play: each player drew a bonus resource.');
+    logMsg(state, `Variant bonus dealt (${bonusResources} resource(s)${freeDevCards ? ` + ${freeDevCards} dev card` : ''} each).`);
   }
   logMsg(state, `Setup complete. ${currentPlayer(state).name} rolls first.`);
 }
@@ -83,8 +86,9 @@ registerHandlers({
     state.players[playerId].pieces.settlements -= 1;
     state.setup.lastVertex = vId;
     state.setup.step = 'road';
-    // Round 2 (second half of the order) grants starting resources.
-    if (state.setup.pointer >= state.config.playerCount) {
+    // The final setup round grants starting resources from that settlement.
+    const rounds = state.setup.order.length / state.config.playerCount;
+    if (state.setup.pointer >= (rounds - 1) * state.config.playerCount) {
       grantStartingResources(state, playerId, vId);
     }
     logMsg(state, `${state.players[playerId].name} placed a settlement.`);

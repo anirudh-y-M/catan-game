@@ -52,12 +52,17 @@ export function buildTopbar(state, ctx) {
       on: { click: () => ctx.setTheme(t) },
     }))),
   ]);
-  const variantLabel = state.config.variant === 'quick' ? 'Quick Play' : 'Standard';
+  const variantLabel = (C.VARIANTS[state.config.variant] || {}).label || 'Standard';
   return h('header', { class: 'topbar' }, [
     h('h1', { text: '⚓ Catan' }),
     h('span', { class: 'meta', text: `${variantLabel} · first to ${state.config.targetVP} VP · turn ${state.turn}` }),
     h('span', { class: 'spacer' }),
     themeSeg,
+    h('button', {
+      class: 'btn btn-sm btn-ghost', title: ctx.muted ? 'Unmute' : 'Mute',
+      'aria-label': ctx.muted ? 'Unmute sound' : 'Mute sound',
+      text: ctx.muted ? '🔇' : '🔊', on: { click: ctx.toggleSound },
+    }),
     h('button', { class: 'btn btn-sm', text: 'New Game', on: { click: ctx.newGame } }),
   ]);
 }

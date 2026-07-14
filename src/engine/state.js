@@ -10,7 +10,7 @@ import {
   BANK_PER_RESOURCE,
   DEV_DECK_COUNTS,
   PIECE_LIMITS,
-  TARGET_VP,
+  VARIANTS,
 } from './constants.js';
 
 function emptyResources() {
@@ -25,11 +25,14 @@ function buildDevDeck() {
   return deck;
 }
 
-/** Snake placement order for setup: forward round 1, reverse round 2. */
-function snakeOrder(n) {
+/** Snake placement order for `rounds` setup rounds (forward, reverse, forward, …). */
+function snakeOrder(n, rounds) {
   const forward = Array.from({ length: n }, (_, i) => i);
-  const reverse = [...forward].reverse();
-  return [...forward, ...reverse];
+  let order = [];
+  for (let r = 0; r < rounds; r++) {
+    order = order.concat(r % 2 === 0 ? forward : [...forward].reverse());
+  }
+  return order;
 }
 
 /**
@@ -68,12 +71,17 @@ export function createGame(cfg) {
     pieces: { ...PIECE_LIMITS },
   }));
 
-  const order = snakeOrder(players.length);
+  const v = VARIANTS[variant] ?? VARIANTS.standard;
+  const order = snakeOrder(players.length, v.setupSettlements);
 
   return {
     config: {
       variant,
-      targetVP: TARGET_VP[variant] ?? TARGET_VP.standard,
+      targetVP: v.targetVP,
+      setupSettlements: v.setupSettlements,
+      bonusResources: v.bonusResources,
+      freeDevCards: v.freeDevCards,
+      discardLimit: v.discardLimit,
       boardMode,
       theme,
       hideHands,

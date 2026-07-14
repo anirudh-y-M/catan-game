@@ -95,6 +95,16 @@ export const PLAYER_COLORS = [
   { id: 'violet', label: 'Violet', hex: '#8c4fbf' },
 ];
 
-/** Victory-point target and starting bonus per rule variant. */
-export const TARGET_VP = { standard: 10, quick: 8 };
-export const QUICK_PLAY_BONUS_RESOURCES = 1;
+/**
+ * Rule variants. Each configures the win target, how many settlements are placed in
+ * setup, a flat starting-resource bonus, free dev cards dealt at setup, and the robber
+ * discard threshold.
+ */
+export const VARIANTS = {
+  standard: { label: 'Standard', targetVP: 10, setupSettlements: 2, bonusResources: 0, freeDevCards: 0, discardLimit: 7 },
+  quick: { label: 'Quick Play', targetVP: 8, setupSettlements: 2, bonusResources: 1, freeDevCards: 0, discardLimit: 7 },
+  works: { label: 'The Works', targetVP: 8, setupSettlements: 3, bonusResources: 3, freeDevCards: 1, discardLimit: 9 },
+};
+
+/** Win target per variant (kept as a convenience map). */
+export const TARGET_VP = Object.fromEntries(Object.entries(VARIANTS).map(([k, v]) => [k, v.targetVP]));

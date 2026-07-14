@@ -14,6 +14,7 @@ import {
 } from './ui/modals.js';
 import { applyTheme } from './ui/themes.js';
 import { save, load, clearSave } from './ui/persistence.js';
+import { play, isMuted, toggleMute } from './ui/sound.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const app = document.getElementById('app');
@@ -25,7 +26,7 @@ let modalEl = null;
 // ---------- Dispatch ----------
 function dispatch(action) {
   if (action.type === 'rollDice' && !ui.rolling) {
-    ui.rolling = true; render();
+    ui.rolling = true; play('dice'); render();
     setTimeout(() => { ui.rolling = false; applyAndRender(action); }, 450);
     return;
   }
@@ -36,9 +37,23 @@ function applyAndRender(action) {
   save(state);
   if (action.type === 'buildRoad') ui.mode = state.freeRoads > 0 ? 'buildRoad' : 'idle';
   else if (action.type === 'buildSettlement' || action.type === 'buildCity') ui.mode = 'idle';
+  playFor(action);
   render();
 }
+
+// Map an applied action (and its result) to a sound effect.
+function playFor(action) {
+  const t = action.type;
+  if (state.winner != null && state.phase === 'gameOver') { play('win'); return; }
+  if (['buildRoad', 'buildSettlement', 'buildCity', 'placeSetupSettlement', 'placeSetupRoad'].includes(t)) play('build');
+  else if (['buyDevCard', 'playKnight', 'playRoadBuilding', 'playYearOfPlenty', 'playMonopoly'].includes(t)) play('dev');
+  else if (t === 'moveRobber') play('robber');
+  else if (t === 'steal') play('steal');
+  else if (t === 'bankTrade' || (t === 'resolvePlayerTrade' && action.accept)) play('trade');
+  else if (t === 'rollDice' && state.lastRoll === 7) play('robber');
+}
 const setMode = (m) => { ui.mode = m; render(); };
+const toggleSound = () => { toggleMute(); render(); };
 const openTrade = () => { ui.modal = 'trade'; render(); };
 const openPlay = () => { ui.modal = 'play'; render(); };
 const setTheme = (t) => { if (state) { state.config.theme = t; save(state); } applyTheme(t); state ? render() : renderSetup(); };
@@ -101,7 +116,7 @@ function syncModals() {
 
 // ---------- Render ----------
 function render() {
-  const ctx = { ui, dispatch, setMode, openTrade, openPlay, newGame, setTheme };
+  const ctx = { ui, dispatch, setMode, openTrade, openPlay, newGame, setTheme, muted: isMuted(), toggleSound };
   clear(app);
   const svg = document.createElementNS(SVGNS, 'svg');
   const board = h('div', { class: 'board-wrap' }, [svg]);
@@ -171,8 +186,12 @@ function renderSetup() {
     ]),
     h('div', { class: 'card' }, [
       h('h2', { text: 'Rules variant' }),
-      seg([['standard', 'Standard — 10 VP'], ['quick', 'Quick Play — 8 VP']], cfg.variant, (v) => { cfg.variant = v; renderSetup(); }),
-      h('p', { class: 'hint', text: 'Quick Play shortens the game and gives everyone a small starting boost.' }),
+      seg([['standard', 'Standard — 10 VP'], ['quick', 'Quick Play — 8 VP'], ['works', 'The Works — 8 VP']], cfg.variant, (v) => { cfg.variant = v; renderSetup(); }),
+      h('p', { class: 'hint', text: cfg.variant === 'works'
+        ? 'The Works: 8 VP · 3 starting settlements each · +3 bonus resources · a free dev card · discard only above 9 cards.'
+        : cfg.variant === 'quick'
+          ? 'Quick Play: 8 VP and a small starting boost for a shorter game.'
+          : 'Standard: the classic race to 10 victory points.' }),
     ]),
     h('div', { class: 'card' }, [
       h('h2', { text: 'Board & look' }),
@@ -202,7 +221,8 @@ function startGame() {
 // ---------- Boot ----------
 function demoBoot(params) {
   const theme = params.get('theme') || 'classic';
-  const variant = params.get('demo') === 'quick' ? 'quick' : 'standard';
+  const d = params.get('demo');
+  const variant = d === 'quick' ? 'quick' : d === 'works' ? 'works' : 'standard';
   let s = createGame({
     players: [{ name: 'Ann', color: 'red' }, { name: 'Bo', color: 'blue' }, { name: 'Cy', color: 'orange' }, { name: 'Di', color: 'violet' }],
     variant, boardMode: 'random', theme, seed: 20260714,
