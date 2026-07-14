@@ -136,7 +136,10 @@ node --test
   localStorage persistence, wired together by `src/main.js`.
 - **`styles/`** — structural CSS plus one file per theme (CSS custom properties).
 
-Design and implementation notes live in `docs/superpowers/`.
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** is a full guided tour of the data flow —
+including a deep dive on the networking stack (WebRTC, ICE, STUN/TURN, DTLS + SHA-256
+encryption) — with flowcharts and sequence diagrams. Design/implementation notes also live
+in `docs/superpowers/`.
 
 ## Credits
 
