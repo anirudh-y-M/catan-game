@@ -224,17 +224,21 @@
   .topbar .meta { flex-basis: 100%; order: 3; }
 }
 
-/* Narrow + LANDSCAPE (phones turned sideways): keep board and sidebar side by side so
-   everything fits the short height with no page scroll — the sidebar scrolls on its own. */
+/* Narrow + LANDSCAPE (phones turned sideways): board and sidebar side by side (fits more
+   per screen than stacking), the WHOLE PAGE scrolls (swipe anywhere), and the board stays
+   pinned on the left via position:sticky so it's always visible while you scroll the panel. */
 @media (max-width: 920px) and (orientation: landscape) {
-  html, body { height: 100%; }
-  body { overflow: hidden; }
-  .game { height: 100vh; overflow: hidden; }
-  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 40%, 340px); }
+  html, body { height: auto; }
+  body { overflow-x: hidden; }
+  .game { height: auto; min-height: 100vh; }
+  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 42%, 340px); align-items: start; }
   .board-wrap, .sidebar { min-width: 0; }
-  .board-wrap { padding: 6px; }
-  .board-wrap svg { max-height: calc(100vh - 60px); }
-  .sidebar { border-left: 1px solid var(--panel-border); border-top: none; overflow-y: auto; max-height: none; }
+  .board-wrap {
+    position: sticky; top: 0; align-self: start; padding: 6px;
+    height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .board-wrap svg { max-height: calc(100vh - 12px); }
+  .sidebar { border-left: 1px solid var(--panel-border); border-top: none; overflow: visible; max-height: none; }
   .topbar { flex-wrap: nowrap; padding: .35rem .7rem; }
   .topbar h1 { font-size: 1.05rem; }
   .topbar .meta { display: none; } /* saves vertical space; turn info is in the sidebar */
