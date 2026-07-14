@@ -1,0 +1,11 @@
+{
+  "name": "catan-hotseat",
+  "version": "1.0.0",
+  "description": "Hot-seat base-game Catan for the browser (buildless, GitHub Pages)",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "serve": "python3 -m http.server 8000"
+  }
+}
