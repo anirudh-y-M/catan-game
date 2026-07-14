@@ -1,0 +1,42 @@
+:root[data-theme="modern"] {
+  --font-body: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --radius: 16px;
+
+  --bg: #0f1520;            /* deep slate */
+  --bg-2: #1b2433;
+  --panel: #18202e;
+  --panel-2: #212c3d;
+  --panel-border: #2c3a4f;
+  --text: #eaf0f7;
+  --on-bg: #eaf0f7;
+  --text-dim: #9fb0c3;
+  --muted: #6c7c91;
+  --accent: #4f9df7;
+  --accent-contrast: #04121f;
+
+  --sea: #16324a;
+  --sea-2: #0f2436;
+  --board-frame: #24405a;
+
+  --terrain-forest: #35b06a;
+  --terrain-pasture: #9ada6b;
+  --terrain-fields: #f3c637;
+  --terrain-hills: #ef8a52;
+  --terrain-mountains: #9fb0c0;
+  --terrain-desert: #e7d4a2;
+  --hex-stroke: rgba(255,255,255,.14);
+
+  --token-fill: #f2f5f9;
+  --token-stroke: #c6d0dc;
+  --token-text: #14202e;
+  --token-red: #e5484d;
+
+  --port-fill: #33475f;
+  --port-text: #eaf0f7;
+  --robber: #05202f;
+
+  --road-outline: rgba(0,0,0,.45);
+  --highlight: #57d0ff;
+  --shadow: 0 10px 30px rgba(0,0,0,.5);
+}

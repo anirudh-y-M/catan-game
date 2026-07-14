@@ -1,0 +1,42 @@
+:root[data-theme="classic"] {
+  --font-body: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Georgia", "Times New Roman", serif;
+  --radius: 14px;
+
+  --bg: #382a1b;            /* wooden table */
+  --bg-2: #ece0c6;          /* inset fields on parchment */
+  --panel: #f5ead0;         /* parchment */
+  --panel-2: #efe0bf;
+  --panel-border: #c2a877;
+  --text: #2c2114;
+  --on-bg: #f4e8cc;         /* text sitting directly on the dark table */
+  --text-dim: #6d5a3d;
+  --muted: #937a52;
+  --accent: #b5651d;        /* burnt sienna */
+  --accent-contrast: #fff8ec;
+
+  --sea: #2f6f8f;
+  --sea-2: #26607c;
+  --board-frame: #6b4a2a;
+
+  --terrain-forest: #2f6d3a;
+  --terrain-pasture: #8ecb5f;
+  --terrain-fields: #ecc94b;
+  --terrain-hills: #c26b3b;
+  --terrain-mountains: #8b909a;
+  --terrain-desert: #e6d4a0;
+  --hex-stroke: rgba(40,25,10,.35);
+
+  --token-fill: #f4e8cc;
+  --token-stroke: #85683a;
+  --token-text: #2c2114;
+  --token-red: #b5321f;
+
+  --port-fill: #6b4a2a;
+  --port-text: #f5ead0;
+  --robber: #24211d;
+
+  --road-outline: rgba(20,12,4,.55);
+  --highlight: #ffcf3f;
+  --shadow: 0 8px 26px rgba(0,0,0,.4);
+}

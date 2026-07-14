@@ -1,0 +1,103 @@
+/* Reset + shared structural styles. Colours come from the theme files as CSS vars. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+#app { min-height: 100%; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* ---- Buttons ---- */
+.btn {
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: transform .08s ease, filter .15s ease, background .15s ease;
+  box-shadow: 0 1px 0 rgba(0,0,0,.08);
+}
+.btn:hover:not(:disabled) { filter: brightness(1.05); transform: translateY(-1px); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.btn-ghost { background: transparent; }
+.btn-sm { padding: .35rem .6rem; border-radius: 8px; font-size: .85rem; }
+
+/* ---- Setup screen ---- */
+.setup {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) 1.25rem 4rem;
+}
+.setup__hero { text-align: center; margin-bottom: 2rem; }
+.setup__hero h1 {
+  font-size: clamp(2.4rem, 7vw, 4rem);
+  letter-spacing: .5px;
+  color: var(--on-bg);
+}
+.setup__hero .anchor { font-size: 1.1em; }
+.setup__hero p { color: var(--on-bg); opacity: .8; margin-top: .5rem; font-size: 1.05rem; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.4rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.25rem;
+}
+.card h2 { font-size: 1.15rem; margin-bottom: .9rem; color: var(--text); }
+.field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .9rem; }
+.field > label { font-weight: 600; font-size: .9rem; color: var(--text-dim); }
+.seg { display: inline-flex; flex-wrap: wrap; gap: .4rem; }
+.seg button {
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--text);
+  padding: .45rem .8rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: transparent;
+}
+.player-rows { display: flex; flex-direction: column; gap: .6rem; }
+.player-row { display: flex; align-items: center; gap: .6rem; }
+.player-row input[type="text"] {
+  flex: 1;
+  padding: .5rem .7rem;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: var(--bg-2);
+  color: var(--text);
+}
+.swatch {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,.25);
+  cursor: pointer; flex: 0 0 auto;
+  transition: transform .1s ease;
+}
+.swatch[aria-pressed="true"] { transform: scale(1.18); box-shadow: 0 0 0 3px var(--accent); }
+.swatch[disabled] { opacity: .25; cursor: not-allowed; }
+.color-picker { display: inline-flex; gap: .4rem; }
+.row-remove { background: transparent; border: none; color: var(--muted); font-size: 1.3rem; line-height: 1; }
+.setup__actions { display: flex; gap: .8rem; justify-content: center; margin-top: 1.5rem; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.hint { color: var(--muted); font-size: .82rem; margin-top: .3rem; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
