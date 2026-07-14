@@ -22,9 +22,10 @@ function playableDevTypes(state) {
 }
 
 function vpCardCount(player) { return player.dev.filter((c) => c.type === 'victoryPoint').length; }
-function displayVP(state, pid) {
+// Hidden VP-cards only count in the VP shown to the viewing seat.
+function displayVP(state, pid, viewer) {
   const full = score(state, pid);
-  return pid === state.current ? full : full - vpCardCount(state.players[pid]);
+  return pid === viewer ? full : full - vpCardCount(state.players[pid]);
 }
 
 function instruction(state) {
@@ -45,10 +46,11 @@ function instruction(state) {
 }
 
 export function buildTopbar(state, ctx) {
+  const activeTheme = ctx.theme || state.config.theme;
   const themeSeg = h('div', { class: 'theme-toggle' }, [
     h('div', { class: 'seg' }, ['classic', 'modern'].map((t) => h('button', {
       type: 'button', text: t[0].toUpperCase() + t.slice(1),
-      'aria-pressed': String(state.config.theme === t),
+      'aria-pressed': String(activeTheme === t),
       on: { click: () => ctx.setTheme(t) },
     }))),
   ]);
@@ -68,16 +70,19 @@ export function buildTopbar(state, ctx) {
 }
 
 function playerCard(state, player, ctx) {
-  const active = player.id === state.current;
-  const showRes = active || !state.config.hideHands;
-  const res = showRes
+  const isCurrent = player.id === state.current;
+  const viewer = ctx.online ? ctx.localSeat : state.current;
+  // Online: reveal only your own seat. Offline: the active player (plus everyone if
+  // "hide hands" is off).
+  const reveal = ctx.online ? (player.id === ctx.localSeat) : (isCurrent || !state.config.hideHands);
+  const res = reveal
     ? h('div', { class: 'pcard__res' }, C.RESOURCES.map((r) => h('span', { class: 'chip' }, [
         h('span', { class: 'ic', text: RES_ICON[r] }), String(player.resources[r]),
       ])))
     : h('div', { class: 'pcard__hidden', text: `${C.RESOURCES.reduce((a, r) => a + player.resources[r], 0)} cards (hidden)` });
 
   const unplayed = player.dev.filter((c) => !c.played);
-  const devSummary = active
+  const devSummary = reveal
     ? (unplayed.map((c) => DEV_ICON[c.type]).join(' ') || 'no cards')
     : `${unplayed.length} dev`;
 
@@ -87,13 +92,13 @@ function playerCard(state, player, ctx) {
   ]);
 
   return h('div', {
-    class: `pcard${active ? ' active' : ''}`,
+    class: `pcard${isCurrent ? ' active' : ''}`,
     style: { borderLeftColor: colorHex(player.color) },
   }, [
     h('div', { class: 'pcard__top' }, [
-      h('span', { class: 'pcard__name', text: player.name }),
+      h('span', { class: 'pcard__name', text: player.name + (ctx.online && player.id === ctx.localSeat ? ' (you)' : '') }),
       badges,
-      h('span', { class: 'pcard__vp', title: 'Victory points', text: `${displayVP(state, player.id)} ★` }),
+      h('span', { class: 'pcard__vp', title: 'Victory points', text: `${displayVP(state, player.id, viewer)} ★` }),
     ]),
     res,
     h('div', { class: 'pcard__hidden', text: `🎴 ${devSummary}` }),
@@ -114,7 +119,8 @@ function diceSection(state, ctx) {
 
 function actionBar(state, ctx) {
   const p = state.players[state.current];
-  const inMain = state.phase === 'main';
+  const gate = ctx.myTurn !== false; // online: only on your turn; offline: always
+  const inMain = gate && state.phase === 'main';
   const freeRoad = state.freeRoads > 0;
 
   const canRoad = inMain && p.pieces.roads > 0 && legalRoadEdges(state, p.id).length > 0
@@ -124,7 +130,7 @@ function actionBar(state, ctx) {
   const canCity = inMain && p.pieces.cities > 0 && legalCityVertices(state, p.id).length > 0
     && canAfford(p, C.COSTS.city);
   const canBuyDev = inMain && state.devDeck.length > 0 && canAfford(p, C.COSTS.devCard);
-  const canPlayDev = (inMain || state.phase === 'roll') && playableDevTypes(state).length > 0;
+  const canPlayDev = gate && (state.phase === 'main' || state.phase === 'roll') && playableDevTypes(state).length > 0;
   const canTrade = inMain;
 
   const modeBtn = (label, mode, enabled) => h('button', {
@@ -137,7 +143,7 @@ function actionBar(state, ctx) {
   return h('div', { class: 'sidebar__section' }, [
     h('div', { class: 'actionbar' }, [
       state.phase === 'roll'
-        ? h('button', { class: 'btn btn-primary', text: '🎲 Roll Dice', on: { click: () => ctx.dispatch({ type: 'rollDice' }) } })
+        ? h('button', { class: 'btn btn-primary', disabled: !gate, text: '🎲 Roll Dice', on: { click: () => ctx.dispatch({ type: 'rollDice' }) } })
         : null,
       modeBtn(`🛤️ Road${freeRoad ? ` (${state.freeRoads} free)` : ''}`, 'buildRoad', canRoad),
       modeBtn('🏠 Settlement', 'buildSettlement', canSettle),
@@ -145,7 +151,7 @@ function actionBar(state, ctx) {
       h('button', { class: 'btn btn-sm', disabled: !canBuyDev, text: '🎴 Buy Dev', on: { click: () => ctx.dispatch({ type: 'buyDevCard' }) } }),
       h('button', { class: 'btn btn-sm', disabled: !canPlayDev, text: '▶️ Play Dev', on: { click: ctx.openPlay } }),
       h('button', { class: 'btn btn-sm', disabled: !canTrade, text: '🔁 Trade', on: { click: ctx.openTrade } }),
-      h('button', { class: 'btn btn-sm', disabled: !inMain, text: '⏭️ End Turn', on: { click: () => ctx.dispatch({ type: 'endTurn' }) } }),
+      h('button', { class: 'btn btn-sm', disabled: !(gate && state.phase === 'main'), text: '⏭️ End Turn', on: { click: () => ctx.dispatch({ type: 'endTurn' }) } }),
     ]),
   ]);
 }
@@ -204,10 +210,15 @@ export function buildSidebar(state, ctx) {
     logOpen ? h('ul', { class: 'log' }, state.log.slice(-14).map((line) => h('li', { text: line }))) : null,
   ]);
 
+  const activePlacer = state.phase === 'setup' ? state.setup.order[state.setup.pointer] : state.current;
+  const waiting = ctx.online && ctx.myTurn === false;
+  const instructionText = waiting
+    ? `Waiting for ${state.players[activePlacer]?.name ?? '…'}…`
+    : instruction(state);
   const sidebar = h('aside', { class: 'sidebar' }, [
     h('div', { class: 'banner', 'aria-live': 'polite' }, [
       h('div', { class: 'turn', text: `${state.players[state.current]?.name ?? ''}'s turn` }),
-      h('div', { class: 'instruction', text: instruction(state) }),
+      h('div', { class: 'instruction', text: instructionText }),
     ]),
     diceSection(state, ctx),
     actionBar(state, ctx),

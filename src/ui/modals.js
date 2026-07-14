@@ -16,8 +16,8 @@ const total = (p) => RES.reduce((a, r) => a + p.resources[r], 0);
 
 function actions(kids) { return h('div', { class: 'modal__actions' }, kids); }
 
-export function discardModal(state, { onConfirm }) {
-  const p = state.players[state.pendingDiscards[0]];
+export function discardModal(state, { seat, onConfirm }) {
+  const p = state.players[seat != null ? seat : state.pendingDiscards[0]];
   const need = Math.floor(total(p) / 2);
   const sel = Object.fromEntries(RES.map((r) => [r, 0]));
   const info = h('p', {});

@@ -1,11 +1,16 @@
 # ⚓ Catan — Hot Seat
 
 A visually polished, fully client-side implementation of the **base game of Catan**,
-playable **2–4 players hot-seat** (pass-and-play on one device) right in the browser.
-No build step, no server — just static files, so it hosts on **GitHub Pages** as-is.
+playable **2–4 players** in the browser — pass-and-play on one device **or** peer-to-peer
+online over the same Wi-Fi. No build step, no server — just static files, so it hosts on
+**GitHub Pages** as-is, and it's responsive down to phones.
 
 ## Features
 
+- **Local or online** — pass-and-play on one device, or peer-to-peer online over the same
+  Wi-Fi (WebRTC data channels, no server, no third-party service). Online, each player
+  sees only their own hand and can act only on their turn.
+- **Responsive** — adapts from desktop to phones (portrait layout, large touch targets).
 - **Full base ruleset** — settlements, cities, roads, the robber, resource & development
   cards, maritime + player trading, ports, Longest Road, Largest Army, and the 10-VP win,
   faithful to the official 2020/2015 rulebook.
@@ -50,6 +55,26 @@ tests, then publishes the site on every push to `main`.
 
 The included `.nojekyll` file tells Pages to serve everything verbatim (no Jekyll
 processing). There is no build step either way.
+
+## Online play (peer-to-peer)
+
+Online uses **WebRTC data channels with manual signalling** — no server and no
+third-party service, so it ships on GitHub Pages untouched. One player hosts (they run
+the authoritative game and relay state); others join. To connect:
+
+1. Everyone opens the site. The **host** picks *Host online*, sets the rules, and clicks
+   **Generate invite code**.
+2. The host copies the invite code and sends it to a player (any chat/DM).
+3. That player picks *Join online*, pastes the code, clicks **Generate my answer**, and
+   sends their answer code back to the host.
+4. The host pastes the answer and clicks **Connect player**. Repeat 2–4 for up to three
+   joiners, then **Start Game**.
+
+**Scope:** because no STUN server is used by default, this reliably connects players on
+the **same network** (e.g. the same Wi-Fi). To enable play across the internet you would
+add a STUN entry in `src/ui/net.js` (`ICE_SERVERS`) — but a public STUN service is an
+external dependency and, per Mercari policy, may require the internal **External Service
+Review** before use, so it's left empty.
 
 ## Run the tests
 
