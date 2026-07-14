@@ -76,10 +76,10 @@ function playerCard(state, player, ctx) {
       ])))
     : h('div', { class: 'pcard__hidden', text: `${C.RESOURCES.reduce((a, r) => a + player.resources[r], 0)} cards (hidden)` });
 
-  const handTotal = C.RESOURCES.reduce((a, r) => a + player.resources[r], 0);
+  const unplayed = player.dev.filter((c) => !c.played);
   const devSummary = active
-    ? player.dev.filter((c) => !c.played).map((c) => DEV_ICON[c.type]).join(' ') || '—'
-    : `${player.dev.filter((c) => !c.played).length} dev`;
+    ? (unplayed.map((c) => DEV_ICON[c.type]).join(' ') || 'no cards')
+    : `${unplayed.length} dev`;
 
   const badges = h('span', { class: 'pcard__badges' }, [
     state.awards.longestRoad === player.id ? h('span', { class: 'badge', title: 'Longest Road', text: '🛣️ LR' }) : null,
@@ -96,11 +96,8 @@ function playerCard(state, player, ctx) {
       h('span', { class: 'pcard__vp', title: 'Victory points', text: `${displayVP(state, player.id)} ★` }),
     ]),
     res,
-    h('div', { class: 'pcard__hidden' }, [
-      `🎴 ${devSummary}`,
-      active && state.config.hideHands ? '' : '',
-    ]),
-    h('div', { class: 'pcard__hidden', text: `🏠 ${player.pieces.settlements} · 🏛️ ${player.pieces.cities} · 🛤️ ${player.pieces.roads}${active ? '' : ` · ${handTotal} cards`}` }),
+    h('div', { class: 'pcard__hidden', text: `🎴 ${devSummary}` }),
+    h('div', { class: 'pcard__hidden', text: `🏠 ${player.pieces.settlements} · 🏛️ ${player.pieces.cities} · 🛤️ ${player.pieces.roads}` }),
   ]);
 }
 
@@ -153,22 +150,58 @@ function actionBar(state, ctx) {
   ]);
 }
 
+const BUILD_COSTS = [
+  ['road', '🛤️ Road'],
+  ['settlement', '🏠 Settlement'],
+  ['city', '🏛️ City'],
+  ['devCard', '🎴 Dev card'],
+];
+
+function costIcons(cost) {
+  const icons = [];
+  for (const [r, n] of Object.entries(cost)) for (let i = 0; i < n; i++) icons.push(RES_ICON[r]);
+  return icons.join(' ');
+}
+
+// The classic "Building Costs" card: what each build needs. Rows you can't currently
+// afford (during your build phase) are dimmed.
+function buildCostsSection(state, ctx) {
+  const open = ctx.ui.costsOpen !== false;
+  const p = state.players[state.current];
+  const inMain = state.phase === 'main';
+  const rows = BUILD_COSTS.map(([key, label]) => h('div', {
+    class: `cost-row${inMain && !canAfford(p, C.COSTS[key]) ? ' unaffordable' : ''}`,
+  }, [
+    h('span', { class: 'cost-name', text: label }),
+    h('span', { class: 'cost-icons', text: costIcons(C.COSTS[key]) }),
+  ]));
+  return h('div', { class: 'sidebar__section' }, [
+    h('button', {
+      class: 'section-toggle', 'aria-expanded': String(open), on: { click: ctx.toggleCosts },
+    }, [
+      h('span', { text: 'Build costs' }),
+      h('span', { class: 'section-chevron', text: open ? '▾' : '▸' }),
+    ]),
+    open ? h('div', { class: 'costs' }, rows) : null,
+  ]);
+}
+
 export function buildSidebar(state, ctx) {
   const bank = h('div', { class: 'sidebar__section' }, [
     h('div', { class: 'bank' }, C.RESOURCES.map((r) => h('span', { class: 'chip', title: r }, [
       h('span', { class: 'ic', text: RES_ICON[r] }), String(state.bank[r]),
     ]))),
   ]);
-  const open = ctx.ui.logOpen !== false;
-  const log = h('div', { class: 'sidebar__section log-section' }, [
+  const logOpen = ctx.ui.logOpen !== false;
+  const log = h('div', { class: 'sidebar__section' }, [
     h('button', {
-      class: 'log-toggle', 'aria-expanded': String(open),
+      class: 'section-toggle', 'aria-expanded': String(logOpen),
       on: { click: ctx.toggleLog },
     }, [
       h('span', { text: 'Game Log' }),
-      h('span', { class: 'log-chevron', text: open ? '▾' : '▸' }),
+      h('span', { class: 'section-chevron', text: logOpen ? '▾' : '▸' }),
     ]),
-    open ? h('ul', { class: 'log' }, state.log.slice(-14).map((line) => h('li', { text: line }))) : null,
+    logOpen ? h('ul', { class: 'log' }, state.log.slice(-14).map((line) => h('li', { text: line }))) : null,
   ]);
 
   const sidebar = h('aside', { class: 'sidebar' }, [
@@ -178,6 +211,7 @@ export function buildSidebar(state, ctx) {
     ]),
     diceSection(state, ctx),
     actionBar(state, ctx),
+    buildCostsSection(state, ctx),
     h('div', { class: 'sidebar__section' }, state.players.map((p) => playerCard(state, p, ctx))),
     bank,
     log,

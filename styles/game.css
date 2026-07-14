@@ -89,14 +89,23 @@
 .actionbar { display: flex; flex-wrap: wrap; gap: .4rem; }
 .actionbar .btn { flex: 1 1 auto; }
 
-/* Log */
-.log-toggle {
+/* Collapsible section header (Build costs, Game Log) */
+.section-toggle {
   display: flex; align-items: center; justify-content: space-between; width: 100%;
   background: transparent; border: none; padding: 0; cursor: pointer;
   color: var(--text-dim); font-family: var(--font-body); font-weight: 700; font-size: .85rem;
 }
-.log-toggle:hover { color: var(--text); }
-.log-chevron { font-size: .8rem; }
+.section-toggle:hover { color: var(--text); }
+.section-chevron { font-size: .8rem; }
+
+/* Build-costs card */
+.costs { display: flex; flex-direction: column; gap: .28rem; margin-top: .5rem; }
+.cost-row { display: flex; align-items: center; gap: .5rem; font-size: .84rem; }
+.cost-row .cost-name { font-weight: 600; min-width: 104px; }
+.cost-row .cost-icons { margin-left: auto; letter-spacing: 1px; }
+.cost-row.unaffordable { opacity: .4; }
+
+/* Log */
 .log { list-style: none; margin: .5rem 0 0; padding: 0; font-size: .82rem; color: var(--text-dim); }
 .log li { padding: .2rem 0; border-bottom: 1px dashed var(--panel-border); }
 .log li:last-child { color: var(--text); font-weight: 600; }

@@ -20,7 +20,7 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 const app = document.getElementById('app');
 
 let state = null;
-let ui = { mode: 'idle', modal: null, rolling: false, logOpen: true };
+let ui = { mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true };
 let modalEl = null;
 
 // ---------- Dispatch ----------
@@ -55,10 +55,11 @@ function playFor(action) {
 const setMode = (m) => { ui.mode = m; render(); };
 const toggleSound = () => { toggleMute(); render(); };
 const toggleLog = () => { ui.logOpen = !ui.logOpen; render(); };
+const toggleCosts = () => { ui.costsOpen = !ui.costsOpen; render(); };
 const openTrade = () => { ui.modal = 'trade'; render(); };
 const openPlay = () => { ui.modal = 'play'; render(); };
 const setTheme = (t) => { if (state) { state.config.theme = t; save(state); } applyTheme(t); state ? render() : renderSetup(); };
-function newGame() { clearSave(); state = null; ui = { mode: 'idle', modal: null, rolling: false, logOpen: true }; removeModal(); renderSetup(); }
+function newGame() { clearSave(); state = null; ui = { mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true }; removeModal(); renderSetup(); }
 
 function onPlayDev(type) {
   ui.modal = null;
@@ -117,7 +118,7 @@ function syncModals() {
 
 // ---------- Render ----------
 function render() {
-  const ctx = { ui, dispatch, setMode, openTrade, openPlay, newGame, setTheme, muted: isMuted(), toggleSound, toggleLog };
+  const ctx = { ui, dispatch, setMode, openTrade, openPlay, newGame, setTheme, muted: isMuted(), toggleSound, toggleLog, toggleCosts };
   clear(app);
   const svg = document.createElementNS(SVGNS, 'svg');
   const board = h('div', { class: 'board-wrap' }, [svg]);
@@ -177,7 +178,7 @@ function renderSetup() {
     saved ? h('div', { class: 'card' }, [
       h('div', { class: 'toggle-row' }, [
         h('span', { text: 'You have a game in progress.' }),
-        h('button', { class: 'btn btn-primary btn-sm', text: '▶ Resume', on: { click: () => { state = saved; ui = { mode: 'idle', modal: null, rolling: false, logOpen: true }; applyTheme(saved.config.theme); render(); } } }),
+        h('button', { class: 'btn btn-primary btn-sm', text: '▶ Resume', on: { click: () => { state = saved; ui = { mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true }; applyTheme(saved.config.theme); render(); } } }),
       ]),
     ]) : null,
     h('div', { class: 'card' }, [
@@ -213,7 +214,7 @@ function startGame() {
     variant: cfg.variant, boardMode: cfg.boardMode, theme: cfg.theme, hideHands: cfg.hideHands,
     seed: Math.floor(Math.random() * 0x7fffffff),
   });
-  ui = { mode: 'idle', modal: null, rolling: false, logOpen: true };
+  ui = { mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true };
   applyTheme(cfg.theme);
   save(state);
   render();
@@ -235,7 +236,7 @@ function demoBoot(params) {
     s = applyAction(s, { type: 'placeSetupRoad', eId });
   }
   s.players[s.current].resources = { brick: 2, lumber: 2, wool: 1, grain: 2, ore: 3 };
-  state = s; ui = { mode: 'idle', modal: null, rolling: false, logOpen: true };
+  state = s; ui = { mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true };
   const act = params.get('act'); // demo build-mode highlight for verification
   if (act) { state.phase = 'main'; state.lastRoll = 8; state.dice = [3, 5]; ui.mode = act; }
   applyTheme(theme); render();
