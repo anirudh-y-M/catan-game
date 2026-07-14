@@ -70,11 +70,25 @@ the authoritative game and relay state); others join. To connect:
 4. The host pastes the answer and clicks **Connect player**. Repeat 2–4 for up to three
    joiners, then **Start Game**.
 
-**Scope:** because no STUN server is used by default, this reliably connects players on
-the **same network** (e.g. the same Wi-Fi). To enable play across the internet you would
-add a STUN entry in `src/ui/net.js` (`ICE_SERVERS`) — but a public STUN service is an
-external dependency and, per Mercari policy, may require the internal **External Service
-Review** before use, so it's left empty.
+**Which setups connect?** With no STUN/TURN configured (the default), peers connect over
+the **same local network**:
+
+| Setup | Works by default? |
+| --- | --- |
+| Both on the same Wi-Fi | ✅ yes |
+| One phone shares a **hotspot**, the other **joins that hotspot** | ✅ yes (same network) |
+| One phone on Wi-Fi, the other on **separate cellular data** | ❌ no — different networks |
+
+(The only same-network gotcha is a router/hotspot with "client isolation" enabled, which
+blocks devices from talking to each other — most phone hotspots don't.)
+
+**Cross-network play** (genuinely different networks) needs NAT traversal, which is
+configurable and **off by default**:
+- Set `ICE_SERVERS` in `src/ui/net.js` (or `?ice=stun:host:port` / `localStorage['catan-ice']`).
+- **STUN** covers most home-network ↔ home-network cases. **TURN** (a relay server, with
+  credentials) is required for strict/symmetric NATs such as **cellular data**.
+- Both are external services and, per Mercari policy, may require the internal
+  **External Service Review** before use — hence empty by default.
 
 ### Optional: short room codes (`ABC-DEF-GHI`)
 

@@ -7,7 +7,27 @@
 // (same Wi-Fi). Adding a STUN entry enables cross-internet play but would rely on an
 // external service — left empty so nothing requires review to ship.
 
-export const ICE_SERVERS = []; // e.g. [{ urls: 'stun:stun.l.google.com:19302' }] — needs review
+// STUN/TURN servers for NAT traversal. EMPTY by default → connections work on the same
+// local network only (same Wi-Fi, or one phone's hotspot that the other joins). Adding
+// servers enables cross-network play but relies on an external service, which per Mercari
+// policy may require the internal "External Service Review" before use.
+//   - STUN handles most home-network ↔ home-network cases.
+//   - TURN (a relay) is needed for strict/symmetric NATs, e.g. cellular data.
+// Example: [{ urls: 'stun:stun.l.google.com:19302' }]
+export const ICE_SERVERS = [];
+
+/** Resolve the ICE server list: the constant above, or a `?ice=` param / localStorage
+ *  override (`?ice=stun:host:port,stun:...` or a JSON array in localStorage `catan-ice`). */
+export function iceServers() {
+  let servers = ICE_SERVERS;
+  try {
+    const fromUrl = new URLSearchParams(location.search).get('ice');
+    const fromLs = localStorage.getItem('catan-ice');
+    if (fromUrl != null) servers = fromUrl.split(',').map((s) => s.trim()).filter(Boolean).map((urls) => ({ urls }));
+    else if (fromLs) servers = JSON.parse(fromLs);
+  } catch { /* ignore */ }
+  return servers;
+}
 
 const enc = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 const dec = (str) => JSON.parse(decodeURIComponent(escape(atob(str))));
@@ -35,7 +55,7 @@ export function createHost({ onPeerOpen, onPeerClose, onMessage } = {}) {
   let nextSeat = 1;
 
   async function createInvite() {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection({ iceServers: iceServers() });
     const dc = pc.createDataChannel('game');
     const peer = { pc, dc, seat: null, open: false };
     dc.onopen = () => {
@@ -70,7 +90,7 @@ export function createHost({ onPeerOpen, onPeerClose, onMessage } = {}) {
 
 /** Joiner side. One connection to the host. */
 export function createClient({ onOpen, onClose, onMessage } = {}) {
-  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  const pc = new RTCPeerConnection({ iceServers: iceServers() });
   let dc = null;
   pc.ondatachannel = (e) => {
     dc = e.channel;
