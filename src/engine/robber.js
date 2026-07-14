@@ -26,7 +26,12 @@ function afterRobberMove(state, hexId) {
   state.board.robberHex = hexId;
   logMsg(state, `Robber moved to the ${state.board.hexes[hexId].terrain}.`);
   state.stealCandidates = robberCandidates(state, hexId);
-  state.phase = state.stealCandidates.length ? 'steal' : 'main';
+  if (state.stealCandidates.length) {
+    state.phase = 'steal';
+  } else {
+    state.phase = state.robberReturnPhase || 'main';
+    state.robberReturnPhase = null;
+  }
 }
 
 registerHandlers({
@@ -70,7 +75,8 @@ registerHandlers({
       logMsg(state, `${currentPlayer(state).name} stole a card from ${victim.name}.`);
     }
     state.stealCandidates = [];
-    state.phase = 'main';
+    state.phase = state.robberReturnPhase || 'main';
+    state.robberReturnPhase = null;
   },
 });
 

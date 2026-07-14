@@ -94,6 +94,7 @@ export function createGame(cfg) {
     freeRoads: 0,
     pendingDiscards: [],
     stealCandidates: [],
+    robberReturnPhase: null,
     setup: { order, pointer: 0, step: 'settlement' },
     awards: { longestRoad: null, longestRoadLen: 0, largestArmy: null, largestArmySize: 0 },
     winner: null,

@@ -65,6 +65,7 @@ registerHandlers({
     logMsg(state, `${state.players[state.current].name} rolled ${sum} (${d1}+${d2}).`);
 
     if (sum === 7) {
+      state.robberReturnPhase = 'main'; // roller resumes their turn after the robber
       state.pendingDiscards = state.players
         .filter((p) => handSize(p) > ROBBER_HAND_LIMIT)
         .map((p) => p.id);
