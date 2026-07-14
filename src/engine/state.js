@@ -47,6 +47,7 @@ export function createGame(cfg) {
     seed = (Math.floor(Math.random() * 0x7fffffff)),
     hideHands = false,
     theme = 'classic',
+    turnSeconds = 30,
   } = cfg;
 
   if (!Array.isArray(playerCfgs) || playerCfgs.length < 2 || playerCfgs.length > 4) {
@@ -85,6 +86,7 @@ export function createGame(cfg) {
       boardMode,
       theme,
       hideHands,
+      turnSeconds,
       playerCount: players.length,
     },
     seed,

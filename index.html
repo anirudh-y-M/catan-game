@@ -2,9 +2,13 @@
 <html lang="en" data-theme="classic">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Catan — Hot Seat</title>
-  <meta name="description" content="A hot-seat game of Catan for 2–4 players, playable in the browser." />
+  <meta name="description" content="A hot-seat and online game of Catan for 2–4 players, playable in the browser." />
+  <meta name="theme-color" content="#0f1520" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚓</text></svg>" />
   <link rel="stylesheet" href="styles/base.css" />
   <link rel="stylesheet" href="styles/game.css" />
@@ -12,6 +16,7 @@
   <link rel="stylesheet" href="styles/theme-modern.css" />
 </head>
 <body>
+  <div class="rotate-hint" role="status">🔄 Rotate to landscape for more room</div>
   <div id="app"></div>
   <script type="module" src="src/main.js"></script>
 </body>

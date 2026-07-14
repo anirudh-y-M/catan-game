@@ -52,8 +52,17 @@
 
 /* Banner */
 .banner { padding: .6rem .8rem; background: var(--panel); border-bottom: 1px solid var(--panel-border); }
+.banner__row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .banner .turn { font-weight: 800; font-family: var(--font-display); font-size: 1.05rem; }
 .banner .instruction { color: var(--text-dim); font-size: .88rem; margin-top: .15rem; }
+.turn-timer {
+  font-weight: 800; font-variant-numeric: tabular-nums; font-size: .9rem;
+  padding: .1rem .5rem; border-radius: 999px; background: var(--bg-2);
+  border: 1px solid var(--panel-border); color: var(--text); white-space: nowrap;
+}
+.turn-timer.low { color: var(--token-red); border-color: var(--token-red); animation: timerPulse 1s ease-in-out infinite; }
+.turn-timer.paused { opacity: .6; }
+@keyframes timerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 
 /* Player cards */
 .pcard {
@@ -198,8 +207,8 @@
 }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 920px) {
-  /* Stack board over sidebar and let the page scroll naturally (robust on mobile). */
+/* Narrow + PORTRAIT (phones held upright): stack board over sidebar, page scrolls. */
+@media (max-width: 920px) and (orientation: portrait) {
   html, body { height: auto; }
   body { overflow-x: hidden; }
   .game { height: auto; min-height: 100vh; overflow-x: hidden; }
@@ -213,6 +222,23 @@
   }
   .topbar { flex-wrap: wrap; gap: .5rem .8rem; }
   .topbar .meta { flex-basis: 100%; order: 3; }
+}
+
+/* Narrow + LANDSCAPE (phones turned sideways): keep board and sidebar side by side so
+   everything fits the short height with no page scroll — the sidebar scrolls on its own. */
+@media (max-width: 920px) and (orientation: landscape) {
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+  .game { height: 100vh; overflow: hidden; }
+  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 40%, 340px); }
+  .board-wrap, .sidebar { min-width: 0; }
+  .board-wrap { padding: 6px; }
+  .board-wrap svg { max-height: calc(100vh - 60px); }
+  .sidebar { border-left: 1px solid var(--panel-border); border-top: none; overflow-y: auto; max-height: none; }
+  .topbar { flex-wrap: nowrap; padding: .35rem .7rem; }
+  .topbar h1 { font-size: 1.05rem; }
+  .topbar .meta { display: none; } /* saves vertical space; turn info is in the sidebar */
+  .sidebar__section { padding: .5rem .6rem; }
 }
 
 @media (max-width: 640px) {
@@ -230,7 +256,6 @@
   /* Fatter, easier-to-tap board pick targets. */
   .pick-vertex { r: 15px; }
   .pick-edge { stroke-width: 13; }
-  .board-wrap svg { max-height: 62vh; }
 }
 
 /* Comfortable tapping regardless of width when the device is touch-first. */

@@ -1,0 +1,10 @@
+{
+  "name": "Catan — Hot Seat",
+  "short_name": "Catan",
+  "description": "Hot-seat and online Catan for 2–4 players.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0f1520",
+  "theme_color": "#0f1520"
+}

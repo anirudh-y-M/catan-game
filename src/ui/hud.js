@@ -226,9 +226,17 @@ export function buildSidebar(state, ctx) {
   const instructionText = waiting
     ? `Waiting for ${state.players[activePlacer]?.name ?? '…'}…`
     : instruction(state);
+  const showTimer = ctx.turnSeconds > 0 && (state.phase === 'roll' || state.phase === 'main');
+  const timerEl = showTimer ? h('span', {
+    class: `turn-timer${ctx.timerPaused ? ' paused' : ''}${(!ctx.timerPaused && ctx.timeLeft <= 10) ? ' low' : ''}`,
+    text: ctx.timerPaused ? '⏱ paused' : `⏱ ${ctx.timeLeft}s`,
+  }) : null;
   const sidebar = h('aside', { class: 'sidebar' }, [
     h('div', { class: 'banner', 'aria-live': 'polite' }, [
-      h('div', { class: 'turn', text: `${state.players[state.current]?.name ?? ''}'s turn` }),
+      h('div', { class: 'banner__row' }, [
+        h('div', { class: 'turn', text: `${state.players[state.current]?.name ?? ''}'s turn` }),
+        timerEl,
+      ]),
       h('div', { class: 'instruction', text: instructionText }),
     ]),
     diceSection(state, ctx),

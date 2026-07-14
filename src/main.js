@@ -34,6 +34,8 @@ let uiTheme = (() => { try { return localStorage.getItem('catan-theme') || 'clas
 const freshUi = () => ({ mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true });
 let anim = {}; // one-shot animation hints for the next render (piece pop, robber hop, …)
 let boardSvg = null; // reference to the current board <svg> for screen-coord math
+let timeLeft = 0;      // turn-timer seconds remaining
+let timerWindow = '';  // key identifying the current timed action window
 
 const RES_EMOJI = { brick: '🧱', lumber: '🌲', wool: '🐑', grain: '🌾', ore: '⛰️' };
 
@@ -178,6 +180,46 @@ function applyAndRender(action) {
 // Host: apply an authorized action that arrived from a remote seat.
 function hostApply(seat, action) { if (authorize(state, seat, action)) applyAndRender(action); }
 
+// ---------- Turn timer ----------
+const timerOn = () => !!(state && state.config && state.config.turnSeconds > 0);
+const timerInWindow = () => state && (state.phase === 'roll' || state.phase === 'main');
+// Paused while trading (a proposed/open trade) — as requested — and while others discard.
+function timerPaused() {
+  return ui.modal === 'trade' || !!state.pendingTrade || state.phase === 'discard';
+}
+// Only the authority (offline, or the online host) may auto-advance on expiry.
+const canDriveTimer = () => !online || online.role === 'host';
+
+// Reset the countdown whenever a new timed window begins (a new turn, or roll→main).
+function syncTimer() {
+  if (!timerOn() || !timerInWindow()) { timerWindow = ''; return; }
+  const key = `${state.turn}:${state.current}:${state.phase}`;
+  if (key !== timerWindow) { timerWindow = key; timeLeft = state.config.turnSeconds; }
+}
+
+function updateTimerEl() {
+  const el = document.querySelector('.turn-timer');
+  if (!el) return;
+  const paused = timerPaused();
+  el.textContent = paused ? '⏱ paused' : `⏱ ${timeLeft}s`;
+  el.classList.toggle('low', !paused && timeLeft <= 10);
+  el.classList.toggle('paused', paused);
+}
+
+function autoAdvance() {
+  // applyAndRender bypasses the per-seat check on purpose: the clock is the referee.
+  if (state.phase === 'roll') applyAndRender({ type: 'rollDice' });
+  else if (state.phase === 'main') applyAndRender({ type: 'endTurn' });
+}
+
+function tick() {
+  if (!timerOn() || !timerInWindow()) return;
+  if (timerPaused()) { updateTimerEl(); return; }
+  if (timeLeft > 0) timeLeft -= 1;
+  if (timeLeft <= 0 && canDriveTimer()) autoAdvance(); // re-renders → syncTimer resets
+  else updateTimerEl();
+}
+
 function playFor(action) {
   const t = action.type;
   if (state.winner != null && state.phase === 'gameOver') { play('win'); return; }
@@ -270,10 +312,12 @@ function syncModals() {
 // ---------- Render ----------
 function render() {
   applyTheme(uiTheme);
+  syncTimer();
   const ctx = {
     ui, dispatch, setMode, openTrade, openPlay, newGame, setTheme,
     muted: isMuted(), toggleSound, toggleLog, toggleCosts,
     theme: uiTheme, online: !!online, localSeat: localSeat(), myTurn: myTurn(),
+    turnSeconds: (state.config && state.config.turnSeconds) || 0, timeLeft, timerPaused: timerPaused(),
   };
   clear(app);
   const svg = document.createElementNS(SVGNS, 'svg');
@@ -339,7 +383,7 @@ function hostStartGame() {
   const seats = hostState.players.slice().sort((a, b) => a.seat - b.seat);
   state = createGame({
     players: seats.map((p, i) => ({ name: p.name, color: C.PLAYER_COLORS[i].id })),
-    variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme,
+    variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme, turnSeconds: cfg.turnSeconds,
     seed: Math.floor(Math.random() * 0x7fffffff),
   });
   online = { role: 'host', seat: 0, host: hostState.host };
@@ -392,7 +436,7 @@ async function joinGenerateAnswer(offerText) {
 // ---------- Setup + lobby screens ----------
 const cfg = {
   players: [{ name: 'Player 1', color: 'red' }, { name: 'Player 2', color: 'blue' }],
-  variant: 'standard', boardMode: 'random', hideHands: false,
+  variant: 'standard', boardMode: 'random', hideHands: false, turnSeconds: 30,
   mode: 'local', onlineName: 'Player 1',
 };
 
@@ -416,6 +460,11 @@ function lookCard(includeHide) {
     h('h2', { text: 'Board & look' }),
     h('div', { class: 'field' }, [h('label', { text: 'Board layout' }), seg([['random', 'Random (balanced)'], ['beginner', 'Beginner (fixed)']], cfg.boardMode, (v) => { cfg.boardMode = v; renderSetup(); })]),
     h('div', { class: 'field' }, [h('label', { text: 'Theme' }), seg([['classic', 'Classic'], ['modern', 'Modern']], uiTheme, (v) => setTheme(v))]),
+    h('div', { class: 'field' }, [
+      h('label', { text: 'Turn timer' }),
+      seg([[0, 'Off'], [30, '30s'], [45, '45s'], [60, '60s'], [90, '90s']], cfg.turnSeconds, (v) => { cfg.turnSeconds = v; renderSetup(); }),
+      h('p', { class: 'hint', text: 'Auto-rolls, then auto-ends the turn when time runs out. Pauses during trades.' }),
+    ]),
     includeHide ? h('label', { class: 'toggle-row' }, [
       h('span', { text: 'Hide opponents’ hands between turns' }),
       h('input', { type: 'checkbox', checked: cfg.hideHands, on: { change: (e) => { cfg.hideHands = e.target.checked; } } }),
@@ -596,7 +645,7 @@ function startGame() {
   state = createGame({
     players: cfg.players.map((p) => ({ name: p.name.trim() || undefined, color: p.color })),
     variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme, hideHands: cfg.hideHands,
-    seed: Math.floor(Math.random() * 0x7fffffff),
+    turnSeconds: cfg.turnSeconds, seed: Math.floor(Math.random() * 0x7fffffff),
   });
   online = null; ui = freshUi(); applyTheme(uiTheme); save(state); render();
 }
@@ -606,9 +655,11 @@ function demoBoot(params) {
   uiTheme = params.get('theme') || 'classic';
   const d = params.get('demo');
   const variant = d === 'quick' ? 'quick' : d === 'works' ? 'works' : 'standard';
+  const tParam = params.get('t');
   let s = createGame({
     players: [{ name: 'Ann', color: 'red' }, { name: 'Bo', color: 'blue' }, { name: 'Cy', color: 'orange' }, { name: 'Di', color: 'violet' }],
     variant, boardMode: 'random', theme: uiTheme, seed: 20260714,
+    turnSeconds: tParam != null ? Number(tParam) : 30,
   });
   while (s.phase === 'setup') {
     const vId = legalSetupSettlementVertices(s)[0];
@@ -640,6 +691,7 @@ function handleKey(e) {
 
 function boot() {
   window.addEventListener('keydown', handleKey);
+  setInterval(tick, 1000);
   const params = new URLSearchParams(location.search);
   if (params.has('demo')) { demoBoot(params); return; }
   renderSetup();
