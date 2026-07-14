@@ -35,15 +35,21 @@ python3 -m http.server 8000
 
 ## Deploy to GitHub Pages
 
+A ready-to-use workflow is included at `.github/workflows/deploy.yml`. It runs the engine
+tests, then publishes the site on every push to `main`.
+
+**Recommended (automatic, via the workflow):**
 1. Push this repository to GitHub.
-2. In the repo, go to **Settings → Pages**.
-3. Under **Build and deployment**, set **Source = Deploy from a branch**, then choose the
-   `main` branch and the `/ (root)` folder. Save.
-4. Wait for the deploy, then open the URL GitHub shows (e.g.
-   `https://<you>.github.io/<repo>/`).
+2. In the repo, go to **Settings → Pages → Build and deployment** and set
+   **Source = GitHub Actions**.
+3. That's it — each push to `main` runs the workflow and deploys. The URL appears in the
+   workflow's summary and under Settings → Pages (e.g. `https://<you>.github.io/<repo>/`).
+
+**Alternative (no workflow):** set **Source = Deploy from a branch**, choose `main` /
+`/ (root)`, and save. (If you use this route you can delete the workflow file.)
 
 The included `.nojekyll` file tells Pages to serve everything verbatim (no Jekyll
-processing). There is no build step.
+processing). There is no build step either way.
 
 ## Run the tests
 

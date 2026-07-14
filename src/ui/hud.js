@@ -159,8 +159,16 @@ export function buildSidebar(state, ctx) {
       h('span', { class: 'ic', text: RES_ICON[r] }), String(state.bank[r]),
     ]))),
   ]);
-  const log = h('div', { class: 'sidebar__section' }, [
-    h('ul', { class: 'log' }, state.log.slice(-14).map((line) => h('li', { text: line }))),
+  const open = ctx.ui.logOpen !== false;
+  const log = h('div', { class: 'sidebar__section log-section' }, [
+    h('button', {
+      class: 'log-toggle', 'aria-expanded': String(open),
+      on: { click: ctx.toggleLog },
+    }, [
+      h('span', { text: 'Game Log' }),
+      h('span', { class: 'log-chevron', text: open ? '▾' : '▸' }),
+    ]),
+    open ? h('ul', { class: 'log' }, state.log.slice(-14).map((line) => h('li', { text: line }))) : null,
   ]);
 
   const sidebar = h('aside', { class: 'sidebar' }, [
