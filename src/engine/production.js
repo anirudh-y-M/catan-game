@@ -56,8 +56,18 @@ registerHandlers({
   rollDice(state) {
     if (state.phase !== 'roll') throw new Error('Not in the roll phase');
     const rng = rngFrom(state);
-    const d1 = rng.rollDie();
-    const d2 = rng.rollDie();
+    let d1 = rng.rollDie();
+    let d2 = rng.rollDie();
+    // Optional "fewer 7s" house rule: re-roll a 7 with some probability. 'normal' keeps
+    // the true 2d6 odds; 'reduced' ~10%; 'rare' ~4%.
+    const mode = state.config.sevensMode || 'normal';
+    if (mode !== 'normal') {
+      const maxRerolls = mode === 'rare' ? 2 : 1;
+      const chance = mode === 'rare' ? 0.85 : 0.6;
+      for (let k = 0; k < maxRerolls && (d1 + d2) === 7 && rng.next() < chance; k++) {
+        d1 = rng.rollDie(); d2 = rng.rollDie();
+      }
+    }
     commitRng(state, rng);
     state.dice = [d1, d2];
     const sum = d1 + d2;

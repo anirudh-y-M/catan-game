@@ -323,6 +323,12 @@ function render() {
   const svg = document.createElementNS(SVGNS, 'svg');
   boardSvg = svg;
   const board = h('div', { class: 'board-wrap' }, [svg]);
+  // Click empty board (not a highlighted target) to cancel the current build mode.
+  board.addEventListener('click', (e) => {
+    if (ui.mode !== 'idle' && !e.target.closest('.pick-vertex, .pick-edge, .pick-hex')) {
+      ui.mode = 'idle'; render();
+    }
+  });
   app.appendChild(h('div', { class: 'game' }, [
     buildTopbar(state, ctx),
     h('div', { class: 'game__body' }, [board, buildSidebar(state, ctx)]),
@@ -384,7 +390,7 @@ function hostStartGame() {
   state = createGame({
     players: seats.map((p, i) => ({ name: p.name, color: C.PLAYER_COLORS[i].id })),
     variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme, turnSeconds: cfg.turnSeconds,
-    seed: Math.floor(Math.random() * 0x7fffffff),
+    sevensMode: cfg.sevensMode, seed: Math.floor(Math.random() * 0x7fffffff),
   });
   online = { role: 'host', seat: 0, host: hostState.host };
   for (const p of seats) if (p.seat !== 0) online.host.sendTo(p.seat, { t: 'welcome', seat: p.seat });
@@ -437,7 +443,7 @@ async function joinGenerateAnswer(offerText) {
 const cfg = {
   players: [{ name: 'Player 1', color: 'red' }, { name: 'Player 2', color: 'blue' }],
   variant: 'standard', boardMode: 'random', hideHands: false, turnSeconds: 30,
-  mode: 'local', onlineName: 'Player 1',
+  sevensMode: 'reduced', mode: 'local', onlineName: 'Player 1',
 };
 
 function seg(options, value, onPick) {
@@ -464,6 +470,11 @@ function lookCard(includeHide) {
       h('label', { text: 'Turn timer' }),
       seg([[0, 'Off'], [30, '30s'], [45, '45s'], [60, '60s'], [90, '90s']], cfg.turnSeconds, (v) => { cfg.turnSeconds = v; renderSetup(); }),
       h('p', { class: 'hint', text: 'Auto-rolls, then auto-ends the turn when time runs out. Pauses during trades.' }),
+    ]),
+    h('div', { class: 'field' }, [
+      h('label', { text: 'Robber (7s)' }),
+      seg([['normal', 'Normal'], ['reduced', 'Fewer'], ['rare', 'Rare']], cfg.sevensMode, (v) => { cfg.sevensMode = v; renderSetup(); }),
+      h('p', { class: 'hint', text: 'How often a 7 is rolled. Normal is true dice odds (~1 in 6); Fewer ~1 in 10; Rare ~1 in 25.' }),
     ]),
     includeHide ? h('label', { class: 'toggle-row' }, [
       h('span', { text: 'Hide opponents’ hands between turns' }),
@@ -645,7 +656,7 @@ function startGame() {
   state = createGame({
     players: cfg.players.map((p) => ({ name: p.name.trim() || undefined, color: p.color })),
     variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme, hideHands: cfg.hideHands,
-    turnSeconds: cfg.turnSeconds, seed: Math.floor(Math.random() * 0x7fffffff),
+    turnSeconds: cfg.turnSeconds, sevensMode: cfg.sevensMode, seed: Math.floor(Math.random() * 0x7fffffff),
   });
   online = null; ui = freshUi(); applyTheme(uiTheme); save(state); render();
 }

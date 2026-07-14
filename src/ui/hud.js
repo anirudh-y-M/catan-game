@@ -22,10 +22,11 @@ function playableDevTypes(state) {
 }
 
 function vpCardCount(player) { return player.dev.filter((c) => c.type === 'victoryPoint').length; }
-// Hidden VP-cards only count in the VP shown to the viewing seat.
+// Secret VP-dev-cards only count in the total shown to a seat that's allowed to see them:
+// 'all' (offline, shared screen) reveals everyone; online reveals only your own seat.
 function displayVP(state, pid, viewer) {
   const full = score(state, pid);
-  return pid === viewer ? full : full - vpCardCount(state.players[pid]);
+  return (viewer === 'all' || pid === viewer) ? full : full - vpCardCount(state.players[pid]);
 }
 
 function instruction(state) {
@@ -71,7 +72,7 @@ export function buildTopbar(state, ctx) {
 
 function playerCard(state, player, ctx) {
   const isCurrent = player.id === state.current;
-  const viewer = ctx.online ? ctx.localSeat : state.current;
+  const viewer = ctx.online ? ctx.localSeat : 'all';
   // Online: reveal only your own seat. Offline: the active player (plus everyone if
   // "hide hands" is off).
   const reveal = ctx.online ? (player.id === ctx.localSeat) : (isCurrent || !state.config.hideHands);
@@ -223,9 +224,13 @@ export function buildSidebar(state, ctx) {
 
   const activePlacer = state.phase === 'setup' ? state.setup.order[state.setup.pointer] : state.current;
   const waiting = ctx.online && ctx.myTurn === false;
-  const instructionText = waiting
+  const buildLabels = { buildRoad: 'road', buildSettlement: 'settlement', buildCity: 'city' };
+  let instructionText = waiting
     ? `Waiting for ${state.players[activePlacer]?.name ?? '…'}…`
     : instruction(state);
+  if (!waiting && buildLabels[ctx.ui.mode]) {
+    instructionText = `Tap a highlighted spot to build a ${buildLabels[ctx.ui.mode]} — or tap the board / press Esc to cancel.`;
+  }
   const showTimer = ctx.turnSeconds > 0 && (state.phase === 'roll' || state.phase === 'main');
   const timerEl = showTimer ? h('span', {
     class: `turn-timer${ctx.timerPaused ? ' paused' : ''}${(!ctx.timerPaused && ctx.timeLeft <= 10) ? ' low' : ''}`,

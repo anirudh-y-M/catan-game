@@ -86,6 +86,28 @@ test('rollDice: 7 with nobody over the limit goes straight to moveRobber', () =>
   assert.deepEqual(next.pendingDiscards, []);
 });
 
+test('sevensMode "reduced" re-rolls a 7 away', () => {
+  // Find a seed where the first roll is 7, the re-roll chance passes (<0.6),
+  // and the re-roll is not a 7 — mirroring rollDice's RNG consumption order.
+  let seed = null;
+  for (let x = 1; x < 500000 && seed === null; x++) {
+    const r = createRng(x);
+    const a = r.int(6) + 1; const b = r.int(6) + 1;
+    if (a + b !== 7) continue;
+    if (!(r.next() < 0.6)) continue;
+    const c = r.int(6) + 1; const d = r.int(6) + 1;
+    if (c + d !== 7) seed = x;
+  }
+  assert.ok(seed !== null, 'seed found');
+
+  const s = game();
+  s.phase = 'roll';
+  s.config.sevensMode = 'reduced';
+  s.rngState = seed;
+  const next = applyAction(s, { type: 'rollDice' });
+  assert.notEqual(next.lastRoll, 7); // the 7 was re-rolled away
+});
+
 test('rollDice: non-7 produces and enters main phase', () => {
   const s = game();
   s.phase = 'roll';
