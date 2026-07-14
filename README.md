@@ -76,6 +76,25 @@ add a STUN entry in `src/ui/net.js` (`ICE_SERVERS`) — but a public STUN servic
 external dependency and, per Mercari policy, may require the internal **External Service
 Review** before use, so it's left empty.
 
+### Optional: short room codes (`ABC-DEF-GHI`)
+
+Instead of the copy/paste handshake, the host can share a **9-letter room code** and
+joiners just type it — no code exchange. This needs a tiny signalling relay to pass the
+connection info under the code, so it is **off by default** and, because it introduces a
+third-party service, **requires the internal External Service Review before use**.
+
+To enable it:
+1. Create a **Firebase Realtime Database** (free tier) and note its URL, e.g.
+   `https://your-project-default-rtdb.firebaseio.com`. Set its rules so `/rooms` is
+   read/write (open, or with a short TTL — it only holds transient offer/answer blobs).
+2. Put that URL in `SIGNALING_URL` in `src/ui/signaling.js` (or, for a quick test, append
+   `?sig=<url>` to the page URL, or set `localStorage['catan-sig']`).
+3. Complete your org's External Service Review for Firebase before real use.
+
+With a URL configured, *Host online* shows a room code and *Join online* asks for one;
+with nothing configured, the app falls back to the serverless copy/paste flow above. Any
+REST key-value store exposing Firebase-style `${base}/${path}.json` GET/PUT works.
+
 ## Run the tests
 
 The game engine is pure and unit-tested with Node's built-in runner:

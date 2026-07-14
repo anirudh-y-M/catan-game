@@ -17,6 +17,9 @@ import { applyTheme } from './ui/themes.js';
 import { save, load, clearSave } from './ui/persistence.js';
 import { play, isMuted, toggleMute } from './ui/sound.js';
 import { createHost, createClient } from './ui/net.js';
+import {
+  signalingEnabled, generateRoomCode, formatRoomCode, hostRoom, joinRoom,
+} from './ui/signaling.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const app = document.getElementById('app');
@@ -88,7 +91,10 @@ const openTrade = () => { ui.modal = 'trade'; render(); };
 const openPlay = () => { ui.modal = 'play'; render(); };
 const setTheme = (t) => { uiTheme = t; try { localStorage.setItem('catan-theme', t); } catch { /* ignore */ } applyTheme(t); state ? render() : renderSetup(); };
 
-function teardownOnline() { online = null; hostState = null; joinState = null; }
+function teardownOnline() {
+  if (hostState && hostState.roomCtrl) hostState.roomCtrl.stop();
+  online = null; hostState = null; joinState = null;
+}
 function newGame() { clearSave(); teardownOnline(); state = null; ui = freshUi(); removeModal(); renderSetup(); }
 
 function onPlayDev(type) {
@@ -184,7 +190,12 @@ function startHosting() {
     onPeerClose: (seat) => { if (hostState) hostState.players = hostState.players.filter((p) => p.seat !== seat); if (online) render(); else renderHostLobby(); },
     onMessage: (seat, msg) => hostOnMessage(seat, msg),
   });
-  hostState = { host, players: [{ seat: 0, name: (cfg.onlineName || 'Host').trim() }], invite: null, pendingPeer: null, generating: false };
+  hostState = { host, players: [{ seat: 0, name: (cfg.onlineName || 'Host').trim() }], invite: null, pendingPeer: null, generating: false, room: null, roomCtrl: null, error: null };
+  if (signalingEnabled()) {
+    const code = generateRoomCode();
+    hostState.room = { code };
+    hostState.roomCtrl = hostRoom(host, code, { onError: (e) => { hostState.error = String(e.message || e); renderHostLobby(); } });
+  }
   renderHostLobby();
 }
 function hostOnMessage(seat, msg) {
@@ -212,6 +223,7 @@ async function hostAcceptAnswer(answerText) {
   renderHostLobby();
 }
 function hostStartGame() {
+  if (hostState.roomCtrl) hostState.roomCtrl.stop();
   const seats = hostState.players.slice().sort((a, b) => a.seat - b.seat);
   state = createGame({
     players: seats.map((p, i) => ({ name: p.name, color: C.PLAYER_COLORS[i].id })),
@@ -231,8 +243,16 @@ function startJoining() {
     onClose: () => { if (joinState) joinState.connected = false; if (!online) renderJoinFlow(); },
     onMessage: (msg) => clientOnMessage(msg),
   });
-  joinState = { client, answer: null, connected: false, seat: null, generating: false, error: null };
+  joinState = { client, answer: null, connected: false, seat: null, generating: false, error: null, room: signalingEnabled() };
   renderJoinFlow();
+}
+async function joinByCode(rawCode) {
+  const code = (rawCode || '').trim();
+  if (!code) return;
+  joinState.generating = true; joinState.error = null; renderJoinFlow();
+  try { await joinRoom(joinState.client, code, (cfg.onlineName || 'Player').trim()); }
+  catch (e) { joinState.error = String(e.message || e); }
+  joinState.generating = false; renderJoinFlow();
 }
 function clientOnMessage(msg) {
   if (msg.t === 'welcome') { joinState.seat = msg.seat; if (online) online.seat = msg.seat; }
@@ -290,7 +310,9 @@ function modeCard() {
   return h('div', { class: 'card' }, [
     h('h2', { text: 'Play mode' }),
     seg([['local', '📱 Local (pass & play)'], ['host', '🌐 Host online'], ['join', '🔗 Join online']], cfg.mode, (v) => { cfg.mode = v; renderSetup(); }),
-    cfg.mode !== 'local' ? h('p', { class: 'hint', text: 'Online is peer-to-peer over the same Wi-Fi — no server. Exchange a connect code with each player.' }) : null,
+    cfg.mode !== 'local' ? h('p', { class: 'hint', text: signalingEnabled()
+      ? 'Online with short room codes (a signaling service is configured).'
+      : 'Online is peer-to-peer over the same Wi-Fi — no server. Exchange a connect code with each player.' }) : null,
   ]);
 }
 function nameCard() {
@@ -353,15 +375,19 @@ function renderHostLobby() {
   clear(app);
   const s = hostState;
   const players = s.players.slice().sort((a, b) => a.seat - b.seat);
-  app.appendChild(h('div', { class: 'setup' }, [
-    h('div', { class: 'setup__hero' }, [h('h1', { html: '<span class="anchor">⚓</span> Host online' }), h('p', { text: 'Same Wi-Fi · share the invite code with each player' })]),
-    h('div', { class: 'card' }, [
-      h('h2', { text: `Players (${players.length}/4)` }),
-      h('div', { class: 'player-rows' }, players.map((p) => h('div', { class: 'player-row' }, [
-        h('span', { text: `Seat ${p.seat + 1}: ${p.name}${p.seat === 0 ? ' — you (host)' : ''}` }),
-      ]))),
-    ]),
-    players.length < 4 ? h('div', { class: 'card' }, [
+  let connectCard = null;
+  if (s.room) {
+    // Short room-code mode (signaling service configured).
+    connectCard = h('div', { class: 'card' }, [
+      h('h2', { text: 'Room code' }),
+      h('p', { text: 'Share this code. Players pick “Join online”, type it, and connect automatically.' }),
+      h('div', { class: 'room-code', text: formatRoomCode(s.room.code) }),
+      h('button', { class: 'btn btn-sm', text: 'Copy code', on: { click: () => copyText(formatRoomCode(s.room.code)) } }),
+      s.error ? h('p', { class: 'hint', text: s.error }) : null,
+    ]);
+  } else if (players.length < 4) {
+    // Serverless copy/paste mode.
+    connectCard = h('div', { class: 'card' }, [
       h('h2', { text: 'Invite a player' }),
       s.invite ? h('div', {}, [
         h('div', { class: 'field' }, [
@@ -376,7 +402,18 @@ function renderHostLobby() {
         ]),
       ]) : h('button', { class: 'btn btn-primary', disabled: s.generating, text: s.generating ? 'Generating…' : 'Generate invite code', on: { click: hostCreateInvite } }),
       s.error ? h('p', { class: 'hint', text: s.error }) : null,
-    ]) : null,
+    ]);
+  }
+
+  app.appendChild(h('div', { class: 'setup' }, [
+    h('div', { class: 'setup__hero' }, [h('h1', { html: '<span class="anchor">⚓</span> Host online' }), h('p', { text: s.room ? 'Share your room code with each player' : 'Same Wi-Fi · share the invite code with each player' })]),
+    h('div', { class: 'card' }, [
+      h('h2', { text: `Players (${players.length}/4)` }),
+      h('div', { class: 'player-rows' }, players.map((p) => h('div', { class: 'player-row' }, [
+        h('span', { text: `Seat ${p.seat + 1}: ${p.name}${p.seat === 0 ? ' — you (host)' : ''}` }),
+      ]))),
+    ]),
+    connectCard,
     h('div', { class: 'setup__actions' }, [
       h('button', { class: 'btn btn-ghost', text: '← Back', on: { click: () => { teardownOnline(); renderSetup(); } } }),
       h('button', { class: 'btn btn-primary', disabled: players.length < 2, text: `Start Game (${players.length})`, on: { click: hostStartGame } }),
@@ -388,25 +425,40 @@ function renderJoinFlow() {
   applyTheme(uiTheme);
   clear(app);
   const s = joinState;
-  app.appendChild(h('div', { class: 'setup' }, [
-    h('div', { class: 'setup__hero' }, [h('h1', { html: '<span class="anchor">⚓</span> Join online' }), h('p', { text: 'Exchange connect codes with the host' })]),
-    nameCard(),
-    s.connected
-      ? h('div', { class: 'card' }, [h('h2', { text: '✅ Connected!' }), h('p', { text: 'Waiting for the host to start the game…' })])
-      : h('div', { class: 'card' }, [
-        h('div', { class: 'field' }, [
-          h('label', { text: '1) Paste the host’s invite code' }),
-          h('textarea', { class: 'code', id: 'offerBox', rows: 3, placeholder: 'Paste invite code…' }),
-          h('button', { class: 'btn btn-primary btn-sm', disabled: s.generating, text: s.generating ? 'Generating…' : 'Generate my answer', on: { click: () => joinGenerateAnswer(document.getElementById('offerBox').value) } }),
-        ]),
-        s.answer ? h('div', { class: 'field' }, [
-          h('label', { text: '2) Send this answer code back to the host' }),
-          h('textarea', { class: 'code', readonly: true, rows: 3, value: s.answer }),
-          h('button', { class: 'btn btn-sm', text: 'Copy answer', on: { click: () => copyText(s.answer) } }),
-          h('p', { class: 'hint', text: 'Then wait — the game begins when the host starts it.' }),
-        ]) : null,
-        s.error ? h('p', { class: 'hint', text: s.error }) : null,
+  let connectCard;
+  if (s.connected) {
+    connectCard = h('div', { class: 'card' }, [h('h2', { text: '✅ Connected!' }), h('p', { text: 'Waiting for the host to start the game…' })]);
+  } else if (s.room) {
+    // Short room-code mode.
+    connectCard = h('div', { class: 'card' }, [
+      h('div', { class: 'field' }, [
+        h('label', { text: 'Room code' }),
+        h('input', { type: 'text', id: 'codeBox', placeholder: 'ABC-DEF-GHI', autocapitalize: 'characters' }),
+        h('button', { class: 'btn btn-primary btn-sm', disabled: s.generating, text: s.generating ? 'Connecting…' : 'Join', on: { click: () => joinByCode(document.getElementById('codeBox').value) } }),
       ]),
+      s.error ? h('p', { class: 'hint', text: s.error }) : null,
+    ]);
+  } else {
+    // Serverless copy/paste mode.
+    connectCard = h('div', { class: 'card' }, [
+      h('div', { class: 'field' }, [
+        h('label', { text: '1) Paste the host’s invite code' }),
+        h('textarea', { class: 'code', id: 'offerBox', rows: 3, placeholder: 'Paste invite code…' }),
+        h('button', { class: 'btn btn-primary btn-sm', disabled: s.generating, text: s.generating ? 'Generating…' : 'Generate my answer', on: { click: () => joinGenerateAnswer(document.getElementById('offerBox').value) } }),
+      ]),
+      s.answer ? h('div', { class: 'field' }, [
+        h('label', { text: '2) Send this answer code back to the host' }),
+        h('textarea', { class: 'code', readonly: true, rows: 3, value: s.answer }),
+        h('button', { class: 'btn btn-sm', text: 'Copy answer', on: { click: () => copyText(s.answer) } }),
+        h('p', { class: 'hint', text: 'Then wait — the game begins when the host starts it.' }),
+      ]) : null,
+      s.error ? h('p', { class: 'hint', text: s.error }) : null,
+    ]);
+  }
+  app.appendChild(h('div', { class: 'setup' }, [
+    h('div', { class: 'setup__hero' }, [h('h1', { html: '<span class="anchor">⚓</span> Join online' }), h('p', { text: s.room ? 'Enter the host’s room code' : 'Exchange connect codes with the host' })]),
+    nameCard(),
+    connectCard,
     h('div', { class: 'setup__actions' }, [h('button', { class: 'btn btn-ghost', text: '← Back', on: { click: () => { teardownOnline(); renderSetup(); } } })]),
   ]));
 }
@@ -454,7 +506,8 @@ function boot() {
     // Hooks for automated online integration tests.
     window.__net = {
       startHosting, hostCreateInvite, hostAcceptAnswer, hostStartGame,
-      startJoining, joinGenerateAnswer,
+      startJoining, joinGenerateAnswer, joinByCode,
+      roomCode: () => hostState && hostState.room && hostState.room.code,
       invite: () => hostState && hostState.invite && hostState.invite.code,
       answer: () => joinState && joinState.answer,
       connected: () => !!(joinState && joinState.connected),
