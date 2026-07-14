@@ -218,6 +218,12 @@ function demoBoot(params) {
   const act = params.get('act'); // demo build-mode highlight for verification
   if (act) { state.phase = 'main'; state.lastRoll = 8; state.dice = [3, 5]; ui.mode = act; }
   applyTheme(theme); render();
+  // Debug hook (demo only) for automated interaction tests.
+  window.__catan = {
+    getState: () => state, getUI: () => ui, dispatch,
+    legalRoad: () => legalRoadEdges(state, state.current),
+    setState: (patch) => { Object.assign(state, patch); render(); },
+  };
 }
 
 function boot() {

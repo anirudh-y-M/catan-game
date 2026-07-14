@@ -159,7 +159,7 @@ export function buildSidebar(state, ctx) {
   ]);
 
   const sidebar = h('aside', { class: 'sidebar' }, [
-    h('div', { class: 'banner' }, [
+    h('div', { class: 'banner', 'aria-live': 'polite' }, [
       h('div', { class: 'turn', text: `${state.players[state.current]?.name ?? ''}'s turn` }),
       h('div', { class: 'instruction', text: instruction(state) }),
     ]),

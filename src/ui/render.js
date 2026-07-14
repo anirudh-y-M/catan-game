@@ -69,6 +69,8 @@ export function renderBoard(svg, state, opts = {}) {
   const cy0 = (Math.min(...ys) + Math.max(...ys)) / 2;
 
   svg.setAttribute('viewBox', `${minX} ${minY} ${w} ${h}`);
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `Catan board. Robber on the ${hexes[robberHex].terrain}.`);
   svg.replaceChildren();
 
   // Sea background.
