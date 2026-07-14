@@ -150,7 +150,42 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 920px) {
-  .game__body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
-  .sidebar { border-left: none; border-top: 1px solid var(--panel-border); max-height: 46vh; }
-  .board-wrap svg { max-height: 52vh; }
+  /* Stack board over sidebar and let the page scroll naturally (robust on mobile). */
+  html, body { height: auto; }
+  body { overflow-x: hidden; }
+  .game { height: auto; min-height: 100vh; overflow-x: hidden; }
+  .game__body { grid-template-columns: minmax(0, 1fr); }
+  .board-wrap, .sidebar { min-width: 0; }
+  .board-wrap { padding: 8px; }
+  .board-wrap svg { max-height: 68vh; }
+  .sidebar {
+    border-left: none; border-top: 1px solid var(--panel-border);
+    overflow: visible; max-height: none;
+  }
+  .topbar { flex-wrap: wrap; gap: .5rem .8rem; }
+  .topbar .meta { flex-basis: 100%; order: 3; }
+}
+
+@media (max-width: 640px) {
+  .topbar h1 { font-size: 1.1rem; }
+  /* Strict two-column action grid so nothing overflows; bigger touch targets. */
+  .actionbar { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .actionbar .btn {
+    min-height: 46px; font-size: .9rem; width: 100%;
+    min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .seg button, .swatch, .stepper button, .res-btn { min-height: 44px; }
+  .swatch { width: 34px; height: 34px; }
+  .pcard__res .chip { font-size: .9rem; padding: .2rem .5rem; }
+  /* Fatter, easier-to-tap board pick targets. */
+  .pick-vertex { r: 15px; }
+  .pick-edge { stroke-width: 13; }
+  .board-wrap svg { max-height: 62vh; }
+}
+
+/* Comfortable tapping regardless of width when the device is touch-first. */
+@media (hover: none) and (pointer: coarse) {
+  .pick-vertex { r: 15px; }
+  .pick-edge { stroke-width: 13; }
+  .btn { min-height: 42px; }
 }
