@@ -76,8 +76,8 @@ function playerCard(state, player, ctx) {
   // "hide hands" is off).
   const reveal = ctx.online ? (player.id === ctx.localSeat) : (isCurrent || !state.config.hideHands);
   const res = reveal
-    ? h('div', { class: 'pcard__res' }, C.RESOURCES.map((r) => h('span', { class: 'chip' }, [
-        h('span', { class: 'ic', text: RES_ICON[r] }), String(player.resources[r]),
+    ? h('div', { class: 'pcard__res' }, C.RESOURCES.map((r) => h('span', { class: 'chip', dataset: { res: r } }, [
+        h('span', { class: 'ic', text: RES_ICON[r] }), h('span', { class: 'num', text: String(player.resources[r]) }),
       ])))
     : h('div', { class: 'pcard__hidden', text: `${C.RESOURCES.reduce((a, r) => a + player.resources[r], 0)} cards (hidden)` });
 

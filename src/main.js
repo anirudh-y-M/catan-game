@@ -33,6 +33,7 @@ let joinState = null; // joiner lobby state
 let uiTheme = (() => { try { return localStorage.getItem('catan-theme') || 'classic'; } catch { return 'classic'; } })();
 const freshUi = () => ({ mode: 'idle', modal: null, rolling: false, logOpen: true, costsOpen: true });
 let anim = {}; // one-shot animation hints for the next render (piece pop, robber hop, …)
+let boardSvg = null; // reference to the current board <svg> for screen-coord math
 
 const RES_EMOJI = { brick: '🧱', lumber: '🌲', wool: '🐑', grain: '🌾', ore: '⛰️' };
 
@@ -53,28 +54,83 @@ function diffAnim(prev, next) {
   }
   return a;
 }
-// Positive per-player resource gains on a production roll (for floating popups).
-function diffGains(prev, next) {
-  if (!prev || next.lastRoll == null || next.lastRoll === 7 || prev.lastRoll === next.lastRoll) return null;
-  const out = {};
-  next.players.forEach((p, id) => {
-    const parts = [];
-    for (const r of Object.keys(p.resources)) {
-      const d = p.resources[r] - prev.players[id].resources[r];
-      if (d > 0) parts.push(`+${d}${RES_EMOJI[r]}`);
+// On a production roll, which resource flew from which hex to which player?
+// One flight per (hex, player); amount = 1 per settlement, 2 per city.
+function computeFlights(prev, next) {
+  const roll = next.lastRoll;
+  if (!prev || roll == null || roll === 7 || prev.lastRoll === roll) return [];
+  const flights = [];
+  for (const hex of next.board.hexes) {
+    if (hex.token !== roll || hex.id === next.board.robberHex || !hex.resource) continue;
+    const perPlayer = {};
+    for (const vId of hex.vertices) {
+      const b = next.board.vertices[vId].building;
+      if (b) perPlayer[b.player] = (perPlayer[b.player] || 0) + (b.type === 'city' ? 2 : 1);
     }
-    if (parts.length) out[id] = parts.join(' ');
-  });
-  return Object.keys(out).length ? out : null;
-}
-function flashGains(gains) {
-  for (const [pid, text] of Object.entries(gains)) {
-    const card = app.querySelector(`.pcard[data-player="${pid}"]`);
-    if (!card) continue;
-    const pop = h('div', { class: 'gain-pop', text });
-    card.appendChild(pop);
-    setTimeout(() => pop.remove(), 1600);
+    for (const [pid, amount] of Object.entries(perPlayer)) flights.push({ hexId: hex.id, playerId: Number(pid), resource: hex.resource, amount });
   }
+  return flights;
+}
+
+const chipEl = (pid, res) => app.querySelector(`.pcard[data-player="${pid}"] .chip[data-res="${res}"]`);
+
+function spawnFly(x, y, tx, ty, emoji, delay, onArrive) {
+  const fly = document.createElement('div');
+  fly.className = 'fly-token'; fly.textContent = emoji;
+  fly.style.left = `${x}px`; fly.style.top = `${y}px`;
+  document.body.appendChild(fly);
+  const dx = tx - x; const dy = ty - y;
+  const a = fly.animate([
+    { transform: 'translate(-50%,-50%) scale(.5)', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(1.2)', opacity: 1, offset: 0.15 },
+    { transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy * 0.5 - 46}px)) scale(1.15)`, opacity: 1, offset: 0.55 },
+    { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.5)`, opacity: 0.85 },
+  ], { duration: 680, delay, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+  a.onfinish = () => { fly.remove(); onArrive(); };
+}
+
+// Fly each produced resource from its hex to the player's chip, ticking the count on arrival.
+function animateProduction(flights, prev, next) {
+  if (!flights.length || !boardSvg) return;
+  // Respect reduced-motion: chips already show the final counts from render().
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const ctm = boardSvg.getScreenCTM();
+  if (!ctm) return;
+  const pt = boardSvg.createSVGPoint();
+
+  // Hold each receiving chip at its previous value so the arrivals visibly count up.
+  const seen = new Set();
+  for (const f of flights) {
+    const key = `${f.playerId}:${f.resource}`;
+    if (seen.has(key)) continue; seen.add(key);
+    const chip = chipEl(f.playerId, f.resource);
+    const num = chip && chip.querySelector('.num');
+    if (num) num.textContent = String(prev.players[f.playerId].resources[f.resource]);
+  }
+
+  flights.forEach((f, i) => {
+    const hex = next.board.hexes[f.hexId];
+    pt.x = hex.cx; pt.y = hex.cy;
+    const sp = pt.matrixTransform(ctm);
+    const target = chipEl(f.playerId, f.resource) || app.querySelector(`.pcard[data-player="${f.playerId}"]`);
+    if (!target) return;
+    const r = target.getBoundingClientRect();
+    spawnFly(sp.x, sp.y, r.left + r.width / 2, r.top + r.height / 2, RES_EMOJI[f.resource], i * 100, () => {
+      const chip = chipEl(f.playerId, f.resource);
+      const num = chip && chip.querySelector('.num');
+      if (num) num.textContent = String((parseInt(num.textContent, 10) || 0) + f.amount);
+      if (chip) { chip.classList.add('chip--bump'); setTimeout(() => chip.classList.remove('chip--bump'), 320); }
+    });
+  });
+
+  // Reconcile to the true state once everything has landed (covers the rare bank-shortage case).
+  setTimeout(() => {
+    for (const f of flights) {
+      const chip = chipEl(f.playerId, f.resource);
+      const num = chip && chip.querySelector('.num');
+      if (num) num.textContent = String(next.players[f.playerId].resources[f.resource]);
+    }
+  }, flights.length * 100 + 780);
 }
 
 // ---------- Turn/authority helpers ----------
@@ -108,7 +164,7 @@ function applyAndRender(action) {
   let next;
   try { next = applyAction(state, action); } catch (e) { console.warn('rejected', action.type, e.message); return; }
   anim = diffAnim(prev, next);
-  const gains = diffGains(prev, next);
+  const flights = computeFlights(prev, next);
   state = next;
   if (!online) save(state);
   if (action.type === 'buildRoad') ui.mode = state.freeRoads > 0 ? 'buildRoad' : 'idle';
@@ -116,7 +172,7 @@ function applyAndRender(action) {
   playFor(action);
   if (online && online.role === 'host') online.host.broadcast({ t: 'state', state });
   render();
-  if (gains) flashGains(gains);
+  animateProduction(flights, prev, next);
 }
 
 // Host: apply an authorized action that arrived from a remote seat.
@@ -221,6 +277,7 @@ function render() {
   };
   clear(app);
   const svg = document.createElementNS(SVGNS, 'svg');
+  boardSvg = svg;
   const board = h('div', { class: 'board-wrap' }, [svg]);
   app.appendChild(h('div', { class: 'game' }, [
     buildTopbar(state, ctx),
@@ -316,12 +373,12 @@ function clientOnMessage(msg) {
     const next = msg.state;
     if (!online) { online = { role: 'client', seat: joinState.seat ?? 0, client: joinState.client }; ui = freshUi(); }
     anim = diffAnim(prev, next);
-    const gains = diffGains(prev, next);
+    const flights = computeFlights(prev, next);
     state = next;
     if (prev && next.lastRoll !== prev.lastRoll && next.lastRoll != null) play('dice');
     if (prev && next.winner != null && prev.winner == null) play('win');
     render();
-    if (gains) flashGains(gains);
+    animateProduction(flights, prev, next);
   }
 }
 async function joinGenerateAnswer(offerText) {
