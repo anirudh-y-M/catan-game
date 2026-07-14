@@ -162,7 +162,7 @@ function actionBar(state, ctx) {
       h('button', { class: 'btn btn-sm', disabled: !canBuyDev, text: '🎴 Buy Dev', on: { click: () => ctx.dispatch({ type: 'buyDevCard' }) } }),
       h('button', { class: 'btn btn-sm', disabled: !canPlayDev, text: '▶️ Play Dev', on: { click: ctx.openPlay } }),
       h('button', { class: 'btn btn-sm', disabled: !canTrade, text: '🔁 Trade', on: { click: ctx.openTrade } }),
-      h('button', { class: 'btn btn-sm', disabled: !(gate && state.phase === 'main'), text: '⏭️ End Turn', on: { click: () => ctx.dispatch({ type: 'endTurn' }) } }),
+      h('button', { class: 'btn btn-sm end-turn', disabled: !(gate && state.phase === 'main'), text: '⏭️ End Turn', on: { click: () => ctx.dispatch({ type: 'endTurn' }) } }),
     ]),
   ]);
 }
