@@ -19,5 +19,14 @@
   <div class="rotate-hint" role="status">🔄 Rotate to landscape for more room</div>
   <div id="app"></div>
   <script type="module" src="src/main.js"></script>
+  <script>
+    // Register the offline service worker (progressive enhancement:
+    // the game works fine without it, this just enables airplane-mode play).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>
