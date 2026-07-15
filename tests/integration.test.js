@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createGame, applyAction, canAfford, portRate, score,
   legalSetupSettlementVertices, legalSetupRoadEdges,
-  legalSettlementVertices, legalRoadEdges,
+  legalSettlementVertices, legalRoadEdges, longestRoadLength,
 } from '../src/engine/index.js';
 import { COSTS, RESOURCES, BANK_PER_RESOURCE } from '../src/engine/constants.js';
 
@@ -129,4 +129,71 @@ test('a full seeded 2-player game reaches a legitimate win with conserved cards/
     assert.equal(built.cities + p.pieces.cities, 4);
     assert.equal(built.roads + p.pieces.roads, 15);
   }
+});
+
+// Greedy simple-path finder over the real edge/vertex adjacency.
+function findPath(board, len, avoid) {
+  for (const startE of board.edges) {
+    const [a, b] = startE.vertices;
+    if (avoid.has(a) || avoid.has(b)) continue;
+    const pathEdges = [startE.id];
+    const visited = new Set([a, b]);
+    let cur = b;
+    while (pathEdges.length < len) {
+      const v = board.vertices[cur];
+      const next = v.edges.map((eid) => board.edges[eid]).find((e) => {
+        const o = e.vertices[0] === cur ? e.vertices[1] : e.vertices[0];
+        return !avoid.has(o) && !visited.has(o) && !pathEdges.includes(e.id);
+      });
+      if (!next) break;
+      const o = next.vertices[0] === cur ? next.vertices[1] : next.vertices[0];
+      visited.add(o); pathEdges.push(next.id); cur = o;
+    }
+    if (pathEdges.length === len) return { edges: pathEdges, vertices: [...visited] };
+  }
+  return null;
+}
+
+// Reproduces the reported concern: mid-game, an opponent builds a strictly
+// longer road through the real buildRoad action and must steal Longest Road.
+test('Longest Road transfers when a later opponent builds a strictly longer road', () => {
+  // Clean board (skip setup) so the only pieces are the roads placed here.
+  let s = createGame({
+    players: [{ name: 'A', color: 'red' }, { name: 'B', color: 'blue' }],
+    seed: 42,
+  });
+
+  // P0 already holds Longest Road with a 5-trail.
+  const p0 = findPath(s.board, 5, new Set());
+  for (const e of p0.edges) s.board.edges[e].road = 0;
+  s.awards.longestRoad = 0; s.awards.longestRoadLen = 5;
+
+  // P1 lays its own connected 5-trail (a tie so far — no steal on a tie).
+  const p1 = findPath(s.board, 5, new Set(p0.vertices));
+  for (const e of p1.edges) s.board.edges[e].road = 1;
+
+  // Find a legal edge extending an endpoint of P1's trail to length 6.
+  const deg = new Map();
+  for (const eid of p1.edges) for (const v of s.board.edges[eid].vertices) deg.set(v, (deg.get(v) || 0) + 1);
+  const endpoints = [...deg.entries()].filter(([, d]) => d === 1).map(([v]) => v);
+  let ext = null;
+  for (const ev of endpoints) {
+    for (const eid of s.board.vertices[ev].edges) {
+      const e = s.board.edges[eid];
+      if (e.road != null) continue;
+      const fv = e.vertices[0] === ev ? e.vertices[1] : e.vertices[0];
+      if (deg.has(fv) || p0.vertices.includes(fv) || s.board.vertices[fv].building) continue;
+      ext = eid; break;
+    }
+    if (ext != null) break;
+  }
+  assert.ok(ext != null, 'found a legal extending edge for P1');
+
+  // P1 builds the 6th road via the real action path.
+  s.current = 1; s.phase = 'main';
+  s.players[1].resources = { brick: 5, lumber: 5, wool: 5, grain: 5, ore: 5 };
+  s = applyAction(s, { type: 'buildRoad', eId: ext });
+
+  assert.equal(longestRoadLength(s, 1), 6);
+  assert.equal(s.awards.longestRoad, 1); // stolen from P0 mid-game
 });
