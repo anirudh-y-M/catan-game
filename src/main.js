@@ -434,7 +434,8 @@ function hostStartGame() {
   state = createGame({
     players: seats.map((p, i) => ({ name: p.name, color: C.PLAYER_COLORS[i].id })),
     variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme, turnSeconds: cfg.turnSeconds,
-    sevensMode: cfg.sevensMode, seed: Math.floor(Math.random() * 0x7fffffff),
+    sevensMode: cfg.sevensMode, targetVP: cfg.targetVP, permanentSettlements: cfg.permanentSettlements,
+    seed: Math.floor(Math.random() * 0x7fffffff),
   });
   online = { role: 'host', seat: 0, host: hostState.host };
   for (const p of seats) if (p.seat !== 0) online.host.sendTo(p.seat, { t: 'welcome', seat: p.seat });
@@ -491,6 +492,7 @@ const cfg = {
   players: [{ name: 'Player 1', color: 'red' }, { name: 'Player 2', color: 'blue' }],
   variant: 'standard', boardMode: 'random', hideHands: false, turnSeconds: 30,
   sevensMode: 'reduced', mode: 'local', onlineName: 'Player 1',
+  targetVP: C.VARIANTS.standard.targetVP, permanentSettlements: false,
 };
 
 function seg(options, value, onPick) {
@@ -499,13 +501,28 @@ function seg(options, value, onPick) {
   })));
 }
 function variantCard() {
+  const stepTarget = (delta) => { cfg.targetVP = Math.max(3, Math.min(25, cfg.targetVP + delta)); renderSetup(); };
   return h('div', { class: 'card' }, [
     h('h2', { text: 'Rules variant' }),
-    seg([['standard', 'Standard — 10 VP'], ['quick', 'Quick Play — 8 VP'], ['works', 'The Works — 8 VP']], cfg.variant, (v) => { cfg.variant = v; renderSetup(); }),
+    // Changing variant resets the win target to that variant's default (still overridable below).
+    seg([['standard', 'Standard — 10 VP'], ['quick', 'Quick Play — 8 VP'], ['works', 'The Works — 8 VP']], cfg.variant, (v) => { cfg.variant = v; cfg.targetVP = C.VARIANTS[v].targetVP; renderSetup(); }),
     h('p', { class: 'hint', text: cfg.variant === 'works'
-      ? 'The Works: 8 VP · 3 starting settlements each · +3 bonus resources · a free dev card · discard only above 9 cards.'
-      : cfg.variant === 'quick' ? 'Quick Play: 8 VP and a small starting boost for a shorter game.'
-        : 'Standard: the classic race to 10 victory points.' }),
+      ? 'The Works: 3 starting settlements each · +3 bonus resources · a free dev card · discard only above 9 cards.'
+      : cfg.variant === 'quick' ? 'Quick Play: a small starting boost for a shorter game.'
+        : 'Standard: the classic ruleset.' }),
+    h('div', { class: 'field' }, [
+      h('label', { text: 'Win target (victory points)' }),
+      h('div', { class: 'stepper stepper--wide' }, [
+        h('button', { type: 'button', text: '−', 'aria-label': 'Fewer points', disabled: cfg.targetVP <= 3, on: { click: () => stepTarget(-1) } }),
+        h('span', { class: 'stepper__val', text: `${cfg.targetVP} VP` }),
+        h('button', { type: 'button', text: '+', 'aria-label': 'More points', disabled: cfg.targetVP >= 25, on: { click: () => stepTarget(1) } }),
+      ]),
+      h('p', { class: 'hint', text: 'First to this many points wins. Raise it (11, 12, 13…) for a longer game.' }),
+    ]),
+    h('label', { class: 'toggle-row' }, [
+      h('span', { text: 'Permanent settlements — once you place all 5, upgrading them to cities does NOT free a piece to build more' }),
+      h('input', { type: 'checkbox', checked: cfg.permanentSettlements, on: { change: (e) => { cfg.permanentSettlements = e.target.checked; } } }),
+    ]),
   ]);
 }
 function lookCard(includeHide) {
@@ -703,7 +720,9 @@ function startGame() {
   state = createGame({
     players: cfg.players.map((p) => ({ name: p.name.trim() || undefined, color: p.color })),
     variant: cfg.variant, boardMode: cfg.boardMode, theme: uiTheme, hideHands: cfg.hideHands,
-    turnSeconds: cfg.turnSeconds, sevensMode: cfg.sevensMode, seed: Math.floor(Math.random() * 0x7fffffff),
+    turnSeconds: cfg.turnSeconds, sevensMode: cfg.sevensMode,
+    targetVP: cfg.targetVP, permanentSettlements: cfg.permanentSettlements,
+    seed: Math.floor(Math.random() * 0x7fffffff),
   });
   online = null; ui = freshUi(); applyTheme(uiTheme); save(state); render();
 }

@@ -59,7 +59,9 @@ registerHandlers({
 
     state.board.vertices[vId].building = { type: 'city', player: player.id };
     player.pieces.cities -= 1;
-    player.pieces.settlements += 1; // the settlement returns to your supply
+    // Normally the settlement returns to your supply. In "permanent settlements"
+    // mode it does not — you get 5 settlements for the whole game.
+    if (!state.config.permanentSettlements) player.pieces.settlements += 1;
     payToBank(state, player.id, COSTS.city);
 
     logMsg(state, `${player.name} upgraded to a city.`);

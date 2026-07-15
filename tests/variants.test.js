@@ -56,6 +56,19 @@ test('The Works: discard threshold is 9, not 7', () => {
   assert.equal(s.config.discardLimit, 9);
 });
 
+test('custom win target overrides the variant default and clamps to 3..25', () => {
+  assert.equal(createGame({ players: players(2), variant: 'standard', targetVP: 12, seed: 1 }).config.targetVP, 12);
+  assert.equal(createGame({ players: players(2), variant: 'quick', targetVP: 15, seed: 1 }).config.targetVP, 15);
+  assert.equal(createGame({ players: players(2), targetVP: 1, seed: 1 }).config.targetVP, 3); // clamp low
+  assert.equal(createGame({ players: players(2), targetVP: 999, seed: 1 }).config.targetVP, 25); // clamp high
+  assert.equal(createGame({ players: players(2), variant: 'standard', seed: 1 }).config.targetVP, 10); // omitted -> default
+});
+
+test('permanent-settlements flag is stored in config (default off)', () => {
+  assert.equal(createGame({ players: players(2), seed: 1 }).config.permanentSettlements, false);
+  assert.equal(createGame({ players: players(2), permanentSettlements: true, seed: 1 }).config.permanentSettlements, true);
+});
+
 test('Standard and Quick still behave as before', () => {
   const std = createGame({ players: players(2), variant: 'standard', seed: 1 });
   assert.equal(std.config.targetVP, 10);

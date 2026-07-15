@@ -9,10 +9,10 @@ import {
 } from '../src/engine/rules.js';
 
 /** Create a 2-player game, run a legal setup, and enter the build phase for player 0. */
-function mainPhaseGame(seed = 1) {
+function mainPhaseGame(seed = 1, extra = {}) {
   let s = createGame({
     players: [{ name: 'A', color: 'red' }, { name: 'B', color: 'blue' }],
-    seed,
+    seed, ...extra,
   });
   while (s.phase === 'setup') {
     const vId = legalSetupSettlementVertices(s)[0];
@@ -71,4 +71,16 @@ test('buildCity upgrades an own settlement and returns it to supply', () => {
   assert.equal(next.players[0].pieces.cities, 3); // 4 - 1
   assert.equal(next.players[0].pieces.settlements, 4); // 3 after setup, +1 returned
   assert.equal(next.players[0].resources.ore, 0);
+});
+
+test('permanent settlements: upgrading to a city does NOT return the settlement piece', () => {
+  const s = mainPhaseGame(3, { permanentSettlements: true });
+  const myVertex = s.board.vertices.find((v) => v.building && v.building.player === 0).id;
+  give(s.players[0], { ore: 3, grain: 2 });
+  const before = s.players[0].pieces.settlements; // 3 remaining after setup
+
+  const next = applyAction(s, { type: 'buildCity', vId: myVertex });
+  assert.equal(next.board.vertices[myVertex].building.type, 'city');
+  assert.equal(next.players[0].pieces.cities, 3);
+  assert.equal(next.players[0].pieces.settlements, before); // unchanged — piece is spent for good
 });

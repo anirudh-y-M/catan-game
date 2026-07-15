@@ -49,6 +49,8 @@ export function createGame(cfg) {
     theme = 'classic',
     turnSeconds = 30,
     sevensMode = 'normal',
+    targetVP, // optional override; falls back to the variant default
+    permanentSettlements = false, // house rule: upgrading to a city does NOT return the settlement piece
   } = cfg;
 
   if (!Array.isArray(playerCfgs) || playerCfgs.length < 2 || playerCfgs.length > 4) {
@@ -75,15 +77,20 @@ export function createGame(cfg) {
 
   const v = VARIANTS[variant] ?? VARIANTS.standard;
   const order = snakeOrder(players.length, v.setupSettlements);
+  // Custom win target overrides the variant default; clamp to a sane range.
+  const finalTarget = Number.isFinite(targetVP)
+    ? Math.max(3, Math.min(25, Math.round(targetVP)))
+    : v.targetVP;
 
   return {
     config: {
       variant,
-      targetVP: v.targetVP,
+      targetVP: finalTarget,
       setupSettlements: v.setupSettlements,
       bonusResources: v.bonusResources,
       freeDevCards: v.freeDevCards,
       discardLimit: v.discardLimit,
+      permanentSettlements,
       boardMode,
       theme,
       hideHands,

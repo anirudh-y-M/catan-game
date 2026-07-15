@@ -161,6 +161,10 @@
 .res-btn[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .stepper { display: inline-flex; align-items: center; gap: .3rem; }
 .stepper button { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--panel-border); background: var(--bg-2); }
+.stepper button:disabled { opacity: .4; cursor: not-allowed; }
+.stepper--wide { gap: .7rem; }
+.stepper--wide button { width: 34px; height: 34px; font-size: 1.2rem; }
+.stepper__val { min-width: 4.5rem; text-align: center; font-weight: 600; font-size: 1.05rem; }
 
 /* Win screen */
 .modal.win { text-align: center; }
