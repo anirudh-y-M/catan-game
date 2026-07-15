@@ -164,6 +164,9 @@ function actionBar(state, ctx) {
       h('button', { class: 'btn btn-sm', disabled: !canPlayDev, text: '▶️ Play Dev', on: { click: ctx.openPlay } }),
       h('button', { class: 'btn btn-sm', disabled: !canTrade, text: '🔁 Trade', on: { click: ctx.openTrade } }),
       h('button', { class: 'btn btn-sm end-turn', disabled: !(gate && state.phase === 'main'), text: '⏭️ End Turn', on: { click: () => ctx.dispatch({ type: 'endTurn' }) } }),
+      ctx.canUndo
+        ? h('button', { class: 'btn btn-sm undo', title: 'Undo your last move (Ctrl+Z)', text: '↶ Undo', on: { click: ctx.onUndo } })
+        : null,
     ]),
   ]);
 }

@@ -37,6 +37,15 @@ let boardSvg = null; // reference to the current board <svg> for screen-coord ma
 let timeLeft = 0;      // turn-timer seconds remaining
 let timerWindow = '';  // key identifying the current timed action window
 
+// Single-step undo (hot-seat only). Holds a snapshot of the state *before* the
+// last reversible action. Info-revealing or turn-crossing actions clear it, so
+// you can only ever step back one reversible move — never peek at a roll/card.
+let undo = null;
+const UNDOABLE = new Set([
+  'buildRoad', 'buildSettlement', 'buildCity', 'bankTrade',
+  'placeSetupSettlement', 'placeSetupRoad',
+]);
+
 const RES_EMOJI = { brick: '🧱', lumber: '🌲', wool: '🐑', grain: '🌾', ore: '⛰️' };
 
 // Diff two states to decide which one-shot board animations to play.
@@ -171,6 +180,10 @@ function applyAndRender(action) {
   const flights = computeFlights(prev, next);
   state = next;
   if (!online) save(state);
+  // Track the single undo slot (hot-seat only). A reversible action stores the
+  // pre-action snapshot; anything else (roll, dev card, robber, trade offer,
+  // end turn) wipes it — so undo can never rewind past hidden information.
+  if (!online) undo = UNDOABLE.has(action.type) ? { snapshot: structuredClone(prev) } : null;
   // A new turn starts clean: drop any half-armed build mode when the acting
   // player changes (e.g. End Turn while Road/Settlement/City was selected but
   // nothing was placed). Otherwise the selection — and its blinking board
@@ -182,6 +195,20 @@ function applyAndRender(action) {
   if (online && online.role === 'host') online.host.broadcast({ t: 'state', state });
   render();
   animateProduction(flights, prev, next);
+}
+
+// Step back one reversible move (hot-seat only). Restores the stored snapshot
+// wholesale — awards, longest road, bank, pieces were all correct in that
+// state, so nothing needs recomputing.
+function doUndo() {
+  if (online || !undo) return;
+  state = undo.snapshot;
+  undo = null;
+  ui.mode = 'idle';
+  ui.modal = null;
+  anim = {};
+  save(state);
+  render();
 }
 
 // Host: apply an authorized action that arrived from a remote seat.
@@ -250,7 +277,7 @@ function teardownOnline() {
   if (hostState && hostState.roomCtrl) hostState.roomCtrl.stop();
   online = null; hostState = null; joinState = null;
 }
-function newGame() { clearSave(); teardownOnline(); state = null; ui = freshUi(); removeModal(); renderSetup(); }
+function newGame() { clearSave(); teardownOnline(); state = null; ui = freshUi(); undo = null; removeModal(); renderSetup(); }
 
 function onPlayDev(type) {
   ui.modal = null;
@@ -335,6 +362,7 @@ function render() {
     muted: isMuted(), toggleSound, toggleLog, toggleCosts,
     theme: uiTheme, online: !!online, localSeat: localSeat(), myTurn: myTurn(),
     turnSeconds: (state.config && state.config.turnSeconds) || 0, timeLeft, timerPaused: timerPaused(),
+    canUndo: !online && !!undo, onUndo: doUndo,
   };
   clear(app);
   const svg = document.createElementNS(SVGNS, 'svg');
@@ -709,9 +737,15 @@ function demoBoot(params) {
 }
 
 function handleKey(e) {
-  if (!state || state.phase === 'setup' || state.phase === 'gameOver') return;
+  if (!state) return;
   const tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  // Undo (Ctrl/Cmd+Z) — hot-seat only, and valid in setup as well as play.
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+    if (!online && undo) { e.preventDefault(); doUndo(); }
+    return;
+  }
+  if (state.phase === 'setup' || state.phase === 'gameOver') return;
   if (online && !myTurn()) return;
   const k = e.key.toLowerCase();
   if (k === 'r' && state.phase === 'roll') { e.preventDefault(); dispatch({ type: 'rollDice' }); }

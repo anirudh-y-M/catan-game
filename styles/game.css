@@ -94,6 +94,11 @@
 .actionbar { display: flex; flex-wrap: wrap; gap: .4rem; }
 .actionbar .btn { flex: 1 1 auto; }
 .actionbar .btn.end-turn { flex: 1 0 100%; } /* always its own full-width row */
+.actionbar .btn.undo {
+  flex: 1 0 100%; /* full-width row below End Turn */
+  color: #d99a3f; border-color: color-mix(in srgb, #d99a3f 45%, var(--panel-border));
+}
+.actionbar .btn.undo:hover:not(:disabled) { border-color: #d99a3f; background: color-mix(in srgb, #d99a3f 12%, var(--bg-2)); }
 
 /* Collapsible section header (Build costs, Game Log) */
 .section-toggle {
@@ -264,6 +269,7 @@
     min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .actionbar .btn.end-turn { grid-column: 1 / -1; } /* full-width row on phones too */
+  .actionbar .btn.undo { grid-column: 1 / -1; } /* full-width row on phones too */
   .seg button, .swatch, .stepper button, .res-btn { min-height: 44px; }
   .swatch { width: 34px; height: 34px; }
   .pcard__res .chip { font-size: .9rem; padding: .2rem .5rem; }
