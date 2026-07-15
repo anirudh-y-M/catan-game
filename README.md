@@ -1,3 +1,5 @@
+https://anirudh-y-m.github.io/catan-game/
+---
 # ⚓ Catan — Hot Seat
 
 A visually polished, fully client-side implementation of the **base game of Catan**,
