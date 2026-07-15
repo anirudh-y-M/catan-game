@@ -136,7 +136,9 @@ function animateProduction(flights, prev, next) {
 }
 
 // ---------- Turn/authority helpers ----------
-const activeSeat = () => (state.phase === 'setup' ? state.setup.order[state.setup.pointer] : state.current);
+// Which seat is on the clock in a given state (setup follows the placement order).
+const seatOf = (st) => (st.phase === 'setup' ? st.setup.order[st.setup.pointer] : st.current);
+const activeSeat = () => seatOf(state);
 const localSeat = () => (online ? online.seat : state.current);
 const myTurn = () => !online || activeSeat() === online.seat;
 
@@ -169,7 +171,12 @@ function applyAndRender(action) {
   const flights = computeFlights(prev, next);
   state = next;
   if (!online) save(state);
-  if (action.type === 'buildRoad') ui.mode = state.freeRoads > 0 ? 'buildRoad' : 'idle';
+  // A new turn starts clean: drop any half-armed build mode when the acting
+  // player changes (e.g. End Turn while Road/Settlement/City was selected but
+  // nothing was placed). Otherwise the selection — and its blinking board
+  // highlights — would bleed into the next player's turn.
+  if (seatOf(prev) !== seatOf(next)) ui.mode = 'idle';
+  else if (action.type === 'buildRoad') ui.mode = state.freeRoads > 0 ? 'buildRoad' : 'idle';
   else if (action.type === 'buildSettlement' || action.type === 'buildCity') ui.mode = 'idle';
   playFor(action);
   if (online && online.role === 'host') online.host.broadcast({ t: 'state', state });
@@ -433,6 +440,9 @@ function clientOnMessage(msg) {
     if (!online) { online = { role: 'client', seat: joinState.seat ?? 0, client: joinState.client }; ui = freshUi(); }
     anim = diffAnim(prev, next);
     const flights = computeFlights(prev, next);
+    // Same fresh-turn reset as applyAndRender: a stale build mode must not
+    // survive into a turn where control has moved to another seat.
+    if (prev && seatOf(prev) !== seatOf(next)) ui.mode = 'idle';
     state = next;
     if (prev && next.lastRoll !== prev.lastRoll && next.lastRoll != null) play('dice');
     if (prev && next.winner != null && prev.winner == null) play('win');
