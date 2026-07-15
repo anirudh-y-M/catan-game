@@ -277,7 +277,17 @@ function pickFor() {
 function removeModal() { if (modalEl) { modalEl.remove(); modalEl = null; } }
 function showModal(content, dismissable) {
   const overlay = h('div', { class: 'overlay' }, [content]);
-  if (dismissable) overlay.addEventListener('click', (e) => { if (e.target === overlay) { ui.modal = null; render(); } });
+  if (dismissable) {
+    const close = () => { ui.modal = null; render(); };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    // Explicit corner close (×) so the window can be dismissed without
+    // hunting for the backdrop. Only cancellable modals get it — mandatory
+    // ones (discard, steal, trade-offer, win) must be acted on.
+    content.insertBefore(
+      h('button', { class: 'modal__close', type: 'button', 'aria-label': 'Close', text: '×', on: { click: close } }),
+      content.firstChild,
+    );
+  }
   document.body.appendChild(overlay);
   modalEl = overlay;
 }
