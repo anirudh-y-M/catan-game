@@ -28,18 +28,21 @@
 /* The board owns the full screen height and is FIXED (never scrolls). The menu that used
    to sit above the board now lives at the top of the sidebar, so nothing steals the
    board's vertical space. Only the sidebar scrolls. */
-.game { height: 100vh; overflow: hidden; }
-.game__body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100vh; min-height: 0; }
+/* App shell pinned to the viewport (position:fixed is the reliable way to stop the whole
+   page scrolling on mobile). The board column is truly static; only the sidebar scrolls. */
+.game { position: fixed; inset: 0; overflow: hidden; }
+.game__body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100%; min-height: 0; }
 .board-wrap {
-  display: flex; align-items: center; justify-content: center; min-width: 0; height: 100vh; padding: 12px;
+  display: flex; align-items: center; justify-content: center; min-width: 0; height: 100%; padding: 12px;
   background: radial-gradient(circle at 50% 40%, var(--bg-2), var(--bg));
   overflow: hidden;
 }
-.board-wrap svg { width: 100%; height: 100%; max-height: calc(100vh - 20px); display: block; }
+.board-wrap svg { width: 100%; height: 100%; max-height: 100%; display: block; }
 
 .sidebar {
   background: var(--bg-2); border-left: 1px solid var(--panel-border);
-  display: flex; flex-direction: column; min-height: 0; height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; min-height: 0; height: 100%;
+  overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
 /* Menu, now the sidebar's sticky header */
 .topbar {
@@ -215,7 +218,8 @@
 @media (max-width: 920px) and (orientation: portrait) {
   html, body { height: auto; }
   body { overflow-x: hidden; }
-  .game { height: auto; min-height: 100vh; overflow-x: hidden; }
+  /* Release the fixed shell so the whole page scrolls (board on top, panel below). */
+  .game { position: static; inset: auto; height: auto; min-height: 100vh; overflow: visible; }
   .game__body { grid-template-columns: minmax(0, 1fr); height: auto; }
   .board-wrap, .sidebar { min-width: 0; }
   .board-wrap { padding: 8px; height: auto; }
@@ -228,21 +232,12 @@
   .topbar .meta { order: 3; }
 }
 
-/* Narrow + LANDSCAPE (phones turned sideways): board and sidebar side by side (fits more
-   per screen than stacking), the WHOLE PAGE scrolls (swipe anywhere), and the board stays
-   pinned on the left via position:sticky so it's always visible while you scroll the panel. */
+/* Narrow + LANDSCAPE (phones turned sideways): keep the fixed app shell so the board is
+   STATIC and only the sidebar scrolls — just a narrower panel and a compact menu. */
 @media (max-width: 920px) and (orientation: landscape) {
-  html, body { height: auto; }
-  body { overflow-x: hidden; }
-  .game { height: auto; min-height: 100vh; }
-  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 42%, 340px); align-items: start; height: auto; }
   .board-wrap, .sidebar { min-width: 0; }
-  .board-wrap {
-    position: sticky; top: 0; align-self: start; padding: 6px;
-    height: 100vh; display: flex; align-items: center; justify-content: center;
-  }
-  .board-wrap svg { max-height: calc(100vh - 12px); }
-  .sidebar { border-left: 1px solid var(--panel-border); border-top: none; overflow: visible; max-height: none; height: auto; }
+  .game__body { grid-template-columns: minmax(0, 1fr) clamp(240px, 44%, 340px); }
+  .board-wrap { padding: 6px; }
   .topbar { flex-wrap: nowrap; padding: .35rem .7rem; }
   .topbar h1 { font-size: 1.05rem; }
   .topbar .meta { display: none; } /* saves vertical space; turn info is in the sidebar */
